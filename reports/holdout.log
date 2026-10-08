@@ -1,0 +1,7 @@
+[19:12:00] holdout tickers=20 days=3019 rebalances=131
+[19:12:58] per_stock: sharpe=1.065 ann_return=0.1909 vol=0.179
+[19:12:58] pooled_mnl: sharpe=1.059 ann_return=0.2056 vol=0.195
+[19:12:58] equal_weight: sharpe=1.039 ann_return=0.1969 vol=0.191
+[19:13:02] pooled_mnl sharpe diff vs equal_weight: (-0.06441276279189294, 0.10735050370564864)
+[19:13:02] H1 NOT SUPPORTED (CI includes 0)
+[19:13:02] wrote holdout_eval.csv, holdout_ci.csv
