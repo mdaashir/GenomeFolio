@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytest
 
 from src.config import load_config, load_sectors
@@ -99,3 +100,31 @@ def test_sector_clusters_restricted_to_universe():
     tickers = list(CFG.universe.tickers)
     cl = sector_clusters(sectors, tickers)
     assert sorted(t for v in cl.values() for t in v) == sorted(tickers)
+
+
+def test_risk_parity_honored_without_forecasts():
+    from dataclasses import replace
+
+    idx = pd.date_range("2020-01-01", periods=252, freq="B")
+    rng = np.random.default_rng(0)
+    low = rng.normal(0.0, 0.005, (252, 2))
+    high = rng.normal(0.0, 0.03, (252, 2))
+    win = pd.DataFrame(np.hstack([low, high]), index=idx, columns=list("abcd"))
+    clusters = {0: ("a", "b"), 1: ("c", "d")}
+    cfg_eq = replace(CFG.portfolio, cluster_method="equal")
+    cfg_rp = replace(CFG.portfolio, cluster_method="risk_parity")
+    w_eq = two_stage_weights(clusters, win, cfg_eq, forecasts=None)
+    w_rp = two_stage_weights(clusters, win, cfg_rp, forecasts=None)
+    assert not np.allclose(w_eq.to_numpy(), w_rp.to_numpy())
+    # the low-volatility cluster should receive more total weight
+    assert w_rp[["a", "b"]].sum() > w_rp[["c", "d"]].sum()
+
+
+def test_forecast_tilt_without_forecasts_falls_back_to_equal():
+    from dataclasses import replace
+
+    win = _returns_window()
+    clusters = {0: tuple(win.columns[:5]), 1: tuple(win.columns[5:])}
+    cfg_tilt = replace(CFG.portfolio, cluster_method="forecast_tilt")
+    w = two_stage_weights(clusters, win, cfg_tilt, forecasts=None)
+    assert w.sum() == pytest.approx(1.0)

@@ -79,13 +79,11 @@ def _cluster_first_stage(
     ids = sorted(clusters)
     sizes = np.array([len(clusters[c]) for c in ids], dtype=float)
 
-    if cfg.cluster_method == "equal" or forecasts is None:
-        w = np.full(len(ids), 1.0 / len(ids))
-    elif cfg.cluster_method == "risk_parity":
+    if cfg.cluster_method == "risk_parity":
         vols = np.array([returns_window[list(clusters[c])].mean(axis=1).std(ddof=0) for c in ids])
         inv = 1.0 / np.where(vols > 0, vols, np.nanmean(vols))
         w = inv / inv.sum()
-    elif cfg.cluster_method == "forecast_tilt":
+    elif cfg.cluster_method == "forecast_tilt" and forecasts is not None:
         f = np.array([forecasts[c] for c in ids], dtype=float)
         if f.size > 1 and f.std() > 0:
             z = (f - f.mean()) / f.std()
@@ -93,8 +91,8 @@ def _cluster_first_stage(
             z = np.zeros_like(f)
         tilted = np.clip(1.0 + cfg.forecast_tilt_strength * z, 0.05, None)
         w = tilted / tilted.sum()
-    else:  # pragma: no cover - guarded by config validation
-        raise ValueError(f"unknown cluster_method {cfg.cluster_method}")
+    else:  # equal (also the fallback when forecast_tilt has no forecasts)
+        w = np.full(len(ids), 1.0 / len(ids))
 
     caps = sizes * cfg.cap(sum(len(m) for m in clusters.values()))
     return cap_redistribute(w, cap=caps)
