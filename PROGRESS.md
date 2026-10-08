@@ -117,9 +117,24 @@ time.
   what hurts.
 - The forecast tilt is the best alignment variant (0.476) but is still marginally worse.
 
+## Symbolization ablations
+
+`uv run python scripts/run_symbolize_ablations.py [report|tune]` — full tables in
+`reports/ABLATIONS.md`.
+
+- **Magnitude-aware symbolization (pooled quantiles) beats per-stock in both periods**
+  (report 0.669 vs 0.421; tune 0.882 vs 0.863) — directionally consistent, size unstable.
+- **The report-period "winner" does not replicate.** `per_stock_mnl` looked best on the
+  report period (0.869, above equal weight) but sits *below* equal weight on the tune period
+  (0.904 vs 0.946); the top variant flips → multiple-comparisons artefact.
+- **No variant beats equal weight significantly** in either period (all CIs include 0).
+  `pooled_mnl` is the only one above equal weight in both, by ~0.02–0.03 Sharpe.
+- Refines `EXPERIMENTS.md`: with magnitude-aware symbolization, alignment (0.67–0.78) beats
+  correlation (0.53), so the weak link was the *magnitude-discarding* per-stock
+  symbolization, not alignment per se.
+
 ## Next steps
 
-1. Check whether per-stock quantile symbolization (which discards magnitude) is throwing
-   away the signal: re-run the `market_neutral` and `15/35/65/85` ablations; consider an
-   alignment-with-magnitude variant.
+1. Pre-register `pooled_mnl` vs `per_stock` vs equal weight and evaluate on a fresh window
+   (or freeze the choice and walk forward) — the variant ranking is not stable.
 2. Optional: replace the crude Politis-White rule with the full automatic selection.
