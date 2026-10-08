@@ -92,7 +92,12 @@ def main(n_draws: int) -> None:
     for step, (_, date, window, forward) in enumerate(
         walk_forward_windows(target, cfg.window.train_days, cfg.window.rebalance_days)
     ):
-        symbols = symbolize(window, cfg.symbolize.cutoffs, market_neutral=cfg.symbolize.market_neutral)
+        symbols = symbolize(
+            window,
+            cfg.symbolize.cutoffs,
+            market_neutral=cfg.symbolize.market_neutral,
+            quantile_scope=cfg.symbolize.quantile_scope,
+        )
         gate = evaluate_gate(
             symbols, cfg.align, cfg.cluster, cfg.null_test, n_draws, np.random.default_rng(cfg.seed + step)
         )

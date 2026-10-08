@@ -184,7 +184,12 @@ def _alignment_weights(window, cfg: Config, rng: np.random.Generator, n_draws: i
     from src.null_test import evaluate_gate
     from src.symbolize import symbolize
 
-    symbols = symbolize(window, cfg.symbolize.cutoffs, market_neutral=cfg.symbolize.market_neutral)
+    symbols = symbolize(
+        window,
+        cfg.symbolize.cutoffs,
+        market_neutral=cfg.symbolize.market_neutral,
+        quantile_scope=cfg.symbolize.quantile_scope,
+    )
     gate = evaluate_gate(symbols, cfg.align, cfg.cluster, cfg.null_test, n_draws=n_draws, rng=rng)
     gate_record[date] = gate.passed
     if not gate.passed:
@@ -250,7 +255,9 @@ def run_backtest(
         elif method == "random":
             from src.symbolize import symbolize
 
-            clusters = _alignment_clusters(symbolize(window, cfg.symbolize.cutoffs), cfg).clusters
+            clusters = _alignment_clusters(
+                symbolize(window, cfg.symbolize.cutoffs, quantile_scope=cfg.symbolize.quantile_scope), cfg
+            ).clusters
             sizes = [len(clusters[c]) for c in sorted(clusters)]
             rclusters = random_clusters(sizes, tickers, date_rng)
             w = two_stage_weights(rclusters, window, cfg.portfolio)
@@ -322,7 +329,12 @@ def band_sweep_report(returns: pd.DataFrame, cfg: Config) -> dict:
     from src.symbolize import symbolize
 
     window = returns.iloc[-cfg.window.train_days :]
-    symbols = symbolize(window, cfg.symbolize.cutoffs, market_neutral=cfg.symbolize.market_neutral)
+    symbols = symbolize(
+        window,
+        cfg.symbolize.cutoffs,
+        market_neutral=cfg.symbolize.market_neutral,
+        quantile_scope=cfg.symbolize.quantile_scope,
+    )
     sweep = band_sweep(symbols, cfg.align, cfg.cluster, cfg.align.band_sweep)
     return {
         "n_clusters": {b: r.n_clusters for b, r in sweep.items()},
