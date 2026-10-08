@@ -1,0 +1,17 @@
+[09:14:40] report days=906 tickers=20 draws=200
+[09:15:15] rebalance 5 gated (35s)
+[09:15:47] rebalance 10 gated (67s)
+[09:16:19] rebalance 15 gated (99s)
+[09:16:57] rebalance 20 gated (137s)
+[09:17:29] rebalance 25 gated (169s)
+[09:18:19] rebalance 30 gated (219s)
+[09:18:25] all rebalances gated in 225s
+[09:18:25] equal_weight: sharpe=0.746 ann_return=0.0944 turnover=0.032
+[09:18:25] align_equal_equal: sharpe=0.332 ann_return=0.0359 turnover=0.299
+[09:18:25] align_risparity_equal: sharpe=0.336 ann_return=0.0362 turnover=0.269
+[09:18:25] align_equal_invvol: sharpe=0.367 ann_return=0.0395 turnover=0.319
+[09:18:25] align_risparity_invvol: sharpe=0.379 ann_return=0.0406 turnover=0.272
+[09:18:25] align_tilt_invvol: sharpe=0.476 ann_return=0.0537 turnover=0.327
+[09:18:26] corr_equal_equal: sharpe=0.506 ann_return=0.0609 turnover=0.170
+[09:18:26] corr_risparity_invvol: sharpe=0.530 ann_return=0.0615 turnover=0.171
+[09:18:29] wrote experiments.csv and experiments_ci.csv
