@@ -133,8 +133,20 @@ time.
   correlation (0.53), so the weak link was the *magnitude-discarding* per-stock
   symbolization, not alignment per se.
 
+## Pre-registered holdout
+
+`uv run python scripts/run_holdout_eval.py` — spec in `reports/PREREGISTRATION.md`,
+result in `reports/HOLDOUT.md`.
+
+- Disjoint 20-stock universe, 131 rebalances, one frozen confirmatory test.
+- **H1 (pooled_mnl Sharpe > equal weight) NOT SUPPORTED**: Sharpe-diff 95% CI
+  (-0.064, 0.107) includes 0.
+- `per_stock` (1.065) and `pooled_mnl` (1.059) are statistically tied; equal weight 1.039.
+- **Conclusion: no symbolization reliably beats equal weight.** The report-period win did
+  not survive the holdout — exactly as the replication check predicted.
+
 ## Next steps
 
-1. Pre-register `pooled_mnl` vs `per_stock` vs equal weight and evaluate on a fresh window
-   (or freeze the choice and walk forward) — the variant ranking is not stable.
+1. Optional: a genuinely disjoint time period (pre-2013) if a time-based out-of-sample
+   check is wanted for the report.
 2. Optional: replace the crude Politis-White rule with the full automatic selection.
