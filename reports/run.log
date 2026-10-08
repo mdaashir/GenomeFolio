@@ -1,0 +1,15 @@
+[06:48:11] prices: 3020 days x 20 tickers
+[06:48:11] universe=20 days=3019 tune=2113 report=906 draws=1000
+[06:48:13] band sweep: k={2: 2, 5: 5, 10: 2} silhouette={2: 0.04392089627558125, 5: 0.03403630602533267, 10: 0.023768338607642065}
+[07:00:46] alignment: 753.0s gate_pass=0.903
+[07:00:46] equal_weight: 0.1s gate_pass=nan
+[07:00:50] min_variance: 3.5s gate_pass=nan
+[07:00:52] mean_variance: 2.2s gate_pass=nan
+[07:00:52] correlation: 0.3s gate_pass=nan
+[07:00:53] random: 1.1s gate_pass=nan
+[07:00:54] sector: 0.2s gate_pass=nan
+[07:00:55] wrote metrics.csv
+[07:00:55] wrote metrics_gate_passed_only.csv
+[07:00:59] wrote bootstrap_ci.csv
+[07:00:59] wrote cost_sweep.csv
+[07:00:59] done
