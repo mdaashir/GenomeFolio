@@ -1,0 +1,77 @@
+# GenomeFolio parameters. Every knob lives here; nothing is hardcoded in src/.
+seed: 42
+
+universe:
+  # Fixed cross-sector US large-cap universe (fixed -> survivorship bias documented, not hidden)
+  tickers: [AAPL, MSFT, INTC, CSCO, JPM, VZ, T, XOM, CVX, CAT, JNJ, PFE, MRK, PG, KO, WMT, DIS, HD, MCD, NKE]
+  start: "2013-01-01"
+  end: "2025-01-01"
+  cache_dir: "data/cache"
+  fixture_path: "data/sample/prices.csv"
+  min_history_years: 10
+
+split:
+  # 70/30 tune/report split. Applies to the full dataset only; the fixture runs disabled.
+  enabled: true
+  tune_fraction: 0.70
+
+symbolize:
+  # Per-stock training-window quantile cutoffs -> 5 symbols
+  # (big-down, small-down, flat, small-up, big-up)
+  cutoffs: [0.20, 0.40, 0.60, 0.80]
+  cutoffs_ablation: [0.15, 0.35, 0.65, 0.85]
+  # Optional ablation: symbolize (stock return - equal-weight universe return)
+  market_neutral: false
+
+align:
+  match_score: 2.0
+  gap_open: -1.0
+  gap_extend: -0.4
+  band: 5
+  band_sweep: [2, 5, 10]
+  use_numba: true
+
+cluster:
+  linkage: average
+  k_min: 2
+  k_max: 6
+  k_cap_divisor: 3       # k <= min(k_max, floor(N / k_cap_divisor))
+  min_cluster_size: 3
+
+null_test:
+  gate_percentile: 95.0  # real silhouette must beat this percentile of null silhouettes
+  n_draws_tuning: 200
+  n_draws_report: 1000
+  fdr_alpha: 0.05
+
+window:
+  train_days: 252
+  rebalance_days: 21     # monthly
+  forecast_horizon: 21   # ~21-day cumulative return, matches rebalance cadence
+
+forecast:
+  model: arima           # arima | spline
+  max_p: 2
+  max_q: 2
+  seasonal: false
+  fallback: historical_mean
+
+portfolio:
+  cluster_method: equal       # equal | risk_parity | forecast_tilt
+  within_cluster: equal       # equal | inverse_vol
+  cap_floor: 0.10             # cap = max(cap_floor, cap_factor / N)
+  cap_factor: 1.5
+  forecast_tilt_strength: 0.25
+
+costs:
+  base_bps: 10.0
+  sweep_bps: [0, 5, 10, 15, 20, 25]
+
+bootstrap:
+  block_length: 20
+  use_politis_white: false
+  n_resamples: 5000
+  confidence: 0.95
+
+backtest:
+  gate_passed_only_descriptive: true

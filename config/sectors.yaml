@@ -1,0 +1,10 @@
+# Sector mapping for the sector-cluster control baseline.
+# Constraint: 3-6 groups, each with >= 3 stocks, so the control obeys the same
+# size rules as the alignment clusters. Every universe ticker must appear once.
+sectors:
+  Technology: [AAPL, MSFT, INTC, CSCO]
+  Financials_Telecom: [JPM, VZ, T]
+  Energy_Industrials: [XOM, CVX, CAT]
+  HealthCare: [JNJ, PFE, MRK]
+  ConsumerStaples: [PG, KO, WMT]
+  ConsumerDiscretionary: [DIS, HD, MCD, NKE]
