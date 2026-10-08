@@ -28,17 +28,25 @@ SYMBOL_NAMES = {BIG_DOWN: "D2", SMALL_DOWN: "D1", FLAT: "F", SMALL_UP: "U1", BIG
 
 
 def quantile_edges(values: np.ndarray, cutoffs: tuple[float, ...]) -> np.ndarray:
-    """Return the strictly-increasing quantile edges for one series.
+    """Return the quantile edges for one series (NaNs ignored).
 
-    NaN values are ignored when computing the quantiles (they are not dropped from the
-    series itself; their symbols come back as NaN). Raises ``ValueError`` on a series
-    that is too short or entirely NaN.
+    Raises ``ValueError`` on a series that is too short or entirely NaN.
     """
     arr = np.asarray(values, dtype=float)
     finite = arr[~np.isnan(arr)]
     if finite.size < 2:
         raise ValueError("need at least two non-NaN observations to compute quantiles")
     return np.quantile(finite, cutoffs)
+
+
+def pooled_quantile_edges(returns: pd.DataFrame, cutoffs: tuple[float, ...]) -> np.ndarray:
+    """Quantile edges from all stocks' returns pooled together.
+
+    Unlike per-stock edges, these preserve relative volatility: a high-vol stock draws
+    more extreme symbols than a low-vol one, so the strings encode magnitude as well as
+    timing (the "alignment with magnitude" ablation).
+    """
+    return quantile_edges(returns.to_numpy().ravel(), cutoffs)
 
 
 def _digitize(values: np.ndarray, edges: np.ndarray) -> np.ndarray:
@@ -67,12 +75,25 @@ def symbolize(
     returns: pd.DataFrame,
     cutoffs: tuple[float, ...],
     market_neutral: bool = False,
+    quantile_scope: str = "per_stock",
 ) -> pd.DataFrame:
     """Symbolize every column of ``returns`` into an integer-coded frame.
 
-    When ``market_neutral`` is set, returns are first de-meaned by the equal-weight
-    universe per day (an ablation), then symbolized.
+    Parameters
+    - ``market_neutral``: de-mean by the equal-weight universe per day first.
+    - ``quantile_scope``: ``"per_stock"`` (default) computes each stock's own edges, so
+      magnitude is normalised away and strings encode timing/shape; ``"pooled"`` computes
+      edges from all stocks pooled, preserving relative volatility (magnitude-aware).
     """
+    if quantile_scope not in {"per_stock", "pooled"}:
+        raise ValueError(f"quantile_scope must be per_stock|pooled, got {quantile_scope!r}")
     data = market_neutralize(returns) if market_neutral else returns
+    if quantile_scope == "pooled":
+        edges = pooled_quantile_edges(data, cutoffs)
+        out = {
+            col: pd.Series(_digitize(data[col].to_numpy(dtype=float), edges), index=data.index)
+            for col in data.columns
+        }
+        return pd.DataFrame(out, index=data.index)
     out = {col: symbolize_series(data[col], cutoffs) for col in data.columns}
     return pd.DataFrame(out, index=data.index)

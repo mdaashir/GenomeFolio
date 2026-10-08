@@ -67,3 +67,14 @@ def test_bad_split_fraction_rejected(tmp_path):
     path.write_text(yaml.safe_dump(data), encoding="utf-8")
     with pytest.raises(ValueError):
         load_config(path)
+
+
+def test_quantile_scope_default_and_validation(tmp_path):
+    cfg = load_config()
+    assert cfg.symbolize.quantile_scope in {"per_stock", "pooled"}
+    data = yaml.safe_load(open("config/params.yaml", encoding="utf-8"))
+    data["symbolize"]["quantile_scope"] = "bogus"
+    path = tmp_path / "badscope.yaml"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_config(path)

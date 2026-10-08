@@ -74,3 +74,26 @@ def test_market_neutral_option_changes_symbols():
     plain = symbolize(r, CUTOFFS, market_neutral=False)
     neutral = symbolize(r, CUTOFFS, market_neutral=True)
     assert not plain.equals(neutral)
+
+
+def test_pooled_scope_preserves_magnitude():
+    rng = np.random.default_rng(0)
+    idx = pd.date_range("2020-01-01", periods=500, freq="B")
+    r = pd.DataFrame(
+        {"low": rng.normal(0.0, 0.005, 500), "high": rng.normal(0.0, 0.03, 500)}, index=idx
+    )
+    per = symbolize(r, CUTOFFS, quantile_scope="per_stock")
+    pooled = symbolize(r, CUTOFFS, quantile_scope="pooled")
+
+    def extreme(s):
+        return float(((s == BIG_DOWN) | (s == BIG_UP)).mean())
+
+    # per-stock: both names have ~40% tail symbols -> magnitude ignored
+    assert abs(extreme(per["low"]) - extreme(per["high"])) < 0.05
+    # pooled: the high-volatility name draws far more extreme symbols
+    assert extreme(pooled["high"]) > extreme(pooled["low"]) + 0.2
+
+
+def test_invalid_quantile_scope_raises():
+    with pytest.raises(ValueError):
+        symbolize(_returns(), CUTOFFS, quantile_scope="bogus")

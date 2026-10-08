@@ -48,6 +48,7 @@ class SymbolizeConfig:
     cutoffs: tuple[float, ...]
     cutoffs_ablation: tuple[float, ...]
     market_neutral: bool
+    quantile_scope: str = "per_stock"
 
 
 @dataclass(frozen=True)
@@ -195,6 +196,7 @@ def load_config(path: str | Path | None = None) -> Config:
             cutoffs=tuple(float(c) for c in sy["cutoffs"]),
             cutoffs_ablation=tuple(float(c) for c in sy["cutoffs_ablation"]),
             market_neutral=bool(sy["market_neutral"]),
+            quantile_scope=str(sy.get("quantile_scope", "per_stock")),
         ),
         align=AlignConfig(
             match_score=float(al["match_score"]),
@@ -282,6 +284,8 @@ def _validate(cfg: Config) -> None:
         raise ValueError("null_test.gate_percentile must be inside (0, 100)")
     if cfg.portfolio.cluster_method not in {"equal", "risk_parity", "forecast_tilt"}:
         raise ValueError("portfolio.cluster_method must be equal|risk_parity|forecast_tilt")
+    if cfg.symbolize.quantile_scope not in {"per_stock", "pooled"}:
+        raise ValueError("symbolize.quantile_scope must be per_stock|pooled")
     if cfg.portfolio.within_cluster not in {"equal", "inverse_vol"}:
         raise ValueError("portfolio.within_cluster must be equal|inverse_vol")
     if cfg.costs.base_bps < 0:

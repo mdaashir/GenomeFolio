@@ -22,6 +22,8 @@ symbolize:
   cutoffs_ablation: [0.15, 0.35, 0.65, 0.85]
   # Optional ablation: symbolize (stock return - equal-weight universe return)
   market_neutral: false
+  # per_stock (default: magnitude normalised away) | pooled (magnitude-aware)
+  quantile_scope: per_stock
 
 align:
   match_score: 2.0
