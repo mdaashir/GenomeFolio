@@ -102,10 +102,24 @@ two-stage allocation* beat the alignment groupings, so it is the alignment itsel
 hurts. Clusters were unstable across bands (ARI 0.07–0.40) and the gate passed 90% of the
 time.
 
+## Follow-up experiments
+
+`uv run python scripts/run_experiments.py` — full tables in `reports/EXPERIMENTS.md`.
+
+- **Bug fixed:** `risk_parity` was silently ignored whenever forecasts were absent (the
+  `forecasts is None` guard in `_cluster_first_stage` forced equal). Fixed with regression
+  tests.
+- **Concentration is a small effect, not the cause.** risk-parity + inverse-vol moves
+  Sharpe 0.332 → 0.379, still far below equal weight (0.746); CI still excludes 0.
+- **The alignment distance is the weak link.** Same constrained-k clustering and allocator
+  on **correlation** distance reaches 0.506–0.530 and is *indistinguishable from equal
+  weight* — the clustering machinery and allocator are fine; the alignment similarity is
+  what hurts.
+- The forecast tilt is the best alignment variant (0.476) but is still marginally worse.
+
 ## Next steps
 
-1. Test the concentration hypothesis: `risk_parity` across clusters, `inverse_vol` within,
-   and size-aware cluster weights.
-2. Isolate the alignment step: same constrained-k clustering on plain correlation distance.
-3. Re-run the quantile-threshold and `market_neutral` ablations.
-4. Optional: replace the crude Politis-White rule with the full automatic selection.
+1. Check whether per-stock quantile symbolization (which discards magnitude) is throwing
+   away the signal: re-run the `market_neutral` and `15/35/65/85` ablations; consider an
+   alignment-with-magnitude variant.
+2. Optional: replace the crude Politis-White rule with the full automatic selection.
