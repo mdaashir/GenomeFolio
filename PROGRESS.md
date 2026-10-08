@@ -16,7 +16,7 @@ portfolio with a bias-aware backtest.
 | 7. Portfolio (two-stage + caps) | `src/portfolio.py` | done, tested |
 | 8. Rolling update | `src/rolling.py` | done |
 | 9. Backtest + metrics + bootstrap | `src/backtest.py` | done, tested |
-| — Evaluation / write-up | this file | in progress |
+| — Evaluation / write-up | `reports/RESULTS.md`, this file | done |
 
 Test suite: `uv run pytest` (60 tests). Smoke run:
 `uv run python -m src.backtest --use-fixture --draws 30`.
@@ -79,18 +79,33 @@ All in `config/params.yaml`; nothing hardcoded.
   overfitting and look-ahead wherever relevant.
 - **Post-split period is short** (~30% of 10+ years ≈ 2.5–3 years, ~30 rebalances), so
   the block-bootstrap CIs are **wide**.
-- **Gate pass fraction ran well above 5%** in the fixture smoke (~0.49 at w = 5). This is
-  expected: equities share a market factor, so real cross-stock similarity beats a null
+- **Gate pass fraction runs far above 5%**: 0.90 on the full run (and ~0.49 on the
+  fixture). Equities share a market factor, so real cross-stock similarity beats a null
   that removes only cross-alignment. It means "similarity exists", not "clusters add
-  value" — the alignment portfolio was **within CI of equal weight** in the smoke run.
+  value" — the gate provides almost no protection here.
 - **Alignment O(n²) per pair**: numba-accelerated; the DP still allocates full
   `(n+1)²` matrices, so keep windows at the configured 252 days. The null gate cost is
   controlled by the draw count (~200 tuning / ~1000 reported).
 - **ARIMA on daily returns is close to the mean**; the forecast is a small tilt, not a
   signal.
 
+## Results (full run)
+
+20 stocks, 3020 days, report period 906 days (~31 rebalances), 1000 gate draws, 10 bps.
+Full tables and interpretation in `reports/RESULTS.md`.
+
+**Negative result.** The alignment portfolio had the **lowest Sharpe of all seven methods**
+(0.33 vs equal-weight 0.75, mean-variance 0.92), and the paired block bootstrap shows it is
+**significantly worse** than equal-weight, mean-variance, random same-size clusters and
+sector clusters (CIs exclude 0). Random groupings of the *same sizes* through the *same
+two-stage allocation* beat the alignment groupings, so it is the alignment itself that
+hurts. Clusters were unstable across bands (ARI 0.07–0.40) and the gate passed 90% of the
+time.
+
 ## Next steps
 
-1. Run the full dataset (`uv run python -m src.backtest`) and write the report.
-2. Optional: notebooks exploring the dendrogram, band sweep, and gate distribution.
-3. Optional: replace the crude Politis-White rule with the full automatic selection.
+1. Test the concentration hypothesis: `risk_parity` across clusters, `inverse_vol` within,
+   and size-aware cluster weights.
+2. Isolate the alignment step: same constrained-k clustering on plain correlation distance.
+3. Re-run the quantile-threshold and `market_neutral` ablations.
+4. Optional: replace the crude Politis-White rule with the full automatic selection.
