@@ -145,8 +145,22 @@ result in `reports/HOLDOUT.md`.
 - **Conclusion: no symbolization reliably beats equal weight.** The report-period win did
   not survive the holdout — exactly as the replication check predicted.
 
+## Time-disjoint OOS
+
+`uv run python scripts/run_time_oos.py` — spec `reports/PREREGISTRATION_TIME.md`, result
+`reports/TIME_OOS.md`.
+
+- Original universe, 2005-2012 (includes 2008), 83 rebalances. **H2 NOT SUPPORTED**:
+  Sharpe-diff 95% CI (-0.006, 0.141) includes 0.
+- **Pattern: `pooled_mnl` beats equal weight in all four evaluations** (report +0.030,
+  tune +0.021, holdout universe +0.020, time OOS +0.068) but **never significantly**.
+  Consistent sign, underpowered.
+- Conclusion unchanged: no confirmed beat. Magnitude-aware, market-neutral symbolization is
+  directionally (not significantly) better across four tests; the run is underpowered, not
+  the method proven worthless.
+
 ## Next steps
 
-1. Optional: a genuinely disjoint time period (pre-2013) if a time-based out-of-sample
-   check is wanted for the report.
+1. Optional: increase power (more stocks, longer history, international universes) to test
+   whether the small consistent edge is real.
 2. Optional: replace the crude Politis-White rule with the full automatic selection.
