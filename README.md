@@ -25,14 +25,21 @@ uv sync
 
 ```
 # Full dataset (downloads/caches prices on first run)
-uv run python -m genomefolio.backtest
+uv run genomefolio
 
 # Offline smoke run on the committed 10-stock fixture
-uv run python -m genomefolio.backtest --use-fixture --draws 30
+uv run genomefolio --use-fixture --draws 30
 
 # Only the band-sweep stability report
-uv run python -m genomefolio.backtest --use-fixture --band-only
+uv run genomefolio --use-fixture --band-only
 ```
+
+Equivalent to `uv run python -m genomefolio.backtest ...`.
+
+## Docs
+
+Method, configuration reference and results: see `docs/` (build with `mkdocs serve`) and the
+full report set in `reports/`.
 
 ## Tests
 

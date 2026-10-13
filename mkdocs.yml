@@ -1,0 +1,8 @@
+site_name: GenomeFolio
+nav:
+  - Home: index.md
+  - Method: method.md
+  - Configuration: config.md
+  - Results: results.md
+theme:
+  name: mkdocs
