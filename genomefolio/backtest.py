@@ -484,27 +484,6 @@ def main(config_path, use_fixture, n_draws, cost_bps, methods, band_only):
 
 
 if __name__ == "__main__":  # pragma: no cover
-    import click
+    from genomefolio.cli import cli
 
-    @click.command()
-    @click.option("--config", "config_path", default=None, help="Path to params.yaml")
-    @click.option("--use-fixture", is_flag=True, help="Use the committed offline sample")
-    @click.option("--draws", "n_draws", default=None, type=int, help="Null-gate draws")
-    @click.option("--cost-bps", default=None, type=float, help="Override transaction cost (bps)")
-    @click.option(
-        "--methods",
-        default="alignment,equal_weight,min_variance,mean_variance,correlation,random,sector",
-    )
-    @click.option("--band-only", is_flag=True, help="Only print the band-sweep stability")
-    def _cli(config_path, use_fixture, n_draws, cost_bps, methods, band_only):
-        cfg = load_config(config_path)
-        main(
-            config_path,
-            use_fixture,
-            n_draws if n_draws is not None else cfg.null_test.n_draws_report,
-            cost_bps,
-            tuple(m.strip() for m in methods.split(",") if m.strip()),
-            band_only,
-        )
-
-    _cli()
+    cli()
