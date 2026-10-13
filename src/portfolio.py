@@ -106,6 +106,8 @@ def two_stage_weights(
 ) -> pd.Series:
     """Return portfolio weights across all stocks for one rebalance."""
     tickers = [t for c in sorted(clusters) for t in clusters[c]]
+    if not tickers:
+        raise ValueError("two_stage_weights: clusters are empty (no stocks to allocate)")
     n = len(tickers)
     cap = cfg.cap(n)
     cluster_w = _cluster_first_stage(clusters, returns_window, cfg, forecasts)
@@ -130,6 +132,8 @@ def two_stage_weights(
 def equal_weights(tickers) -> pd.Series:
     """Equal-weight across a single group (the gate-failure fallback)."""
     tickers = list(tickers)
+    if not tickers:
+        raise ValueError("equal_weights: no tickers given")
     return pd.Series(1.0 / len(tickers), index=tickers)
 
 

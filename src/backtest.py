@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from src.config import Config, load_config, load_sectors
+from src.config import Config, load_config, load_sectors, validate_sector_coverage
 from src.portfolio import (
     correlation_clusters,
     equal_weights,
@@ -252,11 +252,13 @@ def run_backtest(
     n_draws = n_draws if n_draws is not None else cfg.null_test.n_draws_report
     cost_bps = cfg.costs.base_bps if cost_bps is None else cost_bps
     date_rng = np.random.default_rng(cfg.seed)
-    sectors = load_sectors()
 
     positions = _rebalance_positions(len(returns), cfg.window.train_days, cfg.window.rebalance_days)
     tickers = list(returns.columns)
     cap = cfg.portfolio.cap(len(tickers))
+    if method == "sector":
+        sector_map = load_sectors()
+        validate_sector_coverage(sector_map, tickers)
 
     prev_w = pd.Series(0.0, index=tickers)
     period_returns: list = []
@@ -284,7 +286,7 @@ def run_backtest(
             clusters = correlation_clusters(window, cfg.cluster)
             w = two_stage_weights(clusters, window, cfg.portfolio)
         elif method == "sector":
-            clusters = sector_clusters(sectors, tickers)
+            clusters = sector_clusters(sector_map, tickers)
             w = two_stage_weights(clusters, window, cfg.portfolio)
         elif method == "random":
             from src.symbolize import symbolize
@@ -299,6 +301,12 @@ def run_backtest(
             raise ValueError(f"unknown method {method}")
 
         w = w.reindex(tickers).fillna(0.0)
+        total = float(w.sum())
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError(
+                f"method '{method}' produced weights summing to {total:.6f}; "
+                "the book must be fully invested (check cluster/universe coverage)"
+            )
 
         turnover = float((w - prev_w).abs().sum())
         turnover_records[date] = turnover

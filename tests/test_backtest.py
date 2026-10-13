@@ -51,6 +51,21 @@ def test_run_backtest_alignment_gate_fraction_bounded():
     assert 0.0 <= res.gate_pass_fraction <= 1.0
 
 
+def test_all_methods_book_fully_invested():
+    r = _returns()
+    for method in ("equal_weight", "correlation", "sector", "random"):
+        res = run_backtest(r, CFG, method=method, n_draws=5, cost_bps=0.0)
+        for date, w in res.weights.items():
+            assert abs(float(w.sum()) - 1.0) < 1e-6, f"{method} under-invested on {date}"
+
+
+def test_sector_method_uncovered_universe_raises():
+    r = _returns().copy()
+    r.columns = [f"ZZZ{i}" for i in range(r.shape[1])]
+    with pytest.raises(ValueError, match="does not cover"):
+        run_backtest(r, CFG, method="sector", n_draws=5)
+
+
 def test_cost_reduces_return():
     free = run_backtest(_returns(), CFG, method="equal_weight", cost_bps=0.0)
     costly = run_backtest(_returns(), CFG, method="equal_weight", cost_bps=25.0)

@@ -1,7 +1,7 @@
 import pytest
 import yaml
 
-from src.config import Config, load_config, load_sectors
+from src.config import Config, load_config, load_sectors, validate_sector_coverage
 
 
 def test_load_default_config():
@@ -40,6 +40,13 @@ def test_sectors_cover_universe():
     sectors = load_sectors()
     covered = {t for members in sectors.values() for t in members}
     assert set(cfg.universe.tickers) == covered
+
+
+def test_sector_coverage_validation_passes_and_fails():
+    sectors = load_sectors()
+    validate_sector_coverage(sectors, load_config().universe.tickers)  # no raise
+    with pytest.raises(ValueError, match="does not cover"):
+        validate_sector_coverage(sectors, ["AAPL", "ZZZZ"])
 
 
 def test_invalid_cutoffs_rejected(tmp_path):

@@ -312,3 +312,19 @@ def load_sectors(path: str | Path | None = None) -> dict[str, tuple[str, ...]]:
         if len(members) < 3:
             raise ValueError(f"sector group '{name}' has {len(members)} stocks (< 3)")
     return groups
+
+
+def validate_sector_coverage(sectors: dict[str, tuple[str, ...]], universe) -> None:
+    """Ensure every universe ticker appears in the sector map.
+
+    The sector-cluster control filters members to the traded universe, so a universe not
+    covered by ``sectors.yaml`` would silently produce partial (or empty) clusters, an
+    under-invested book, or a ``ZeroDivisionError``. Fails loudly instead, naming the
+    missing tickers.
+    """
+    covered = {t for members in sectors.values() for t in members}
+    missing = sorted(set(universe) - covered)
+    if missing:
+        raise ValueError(
+            f"sectors.yaml does not cover the universe; missing: {missing}"
+        )

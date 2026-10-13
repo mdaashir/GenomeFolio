@@ -74,6 +74,17 @@ def test_equal_weights():
     assert np.allclose(w.to_numpy(), 1.0 / 3.0)
 
 
+def test_equal_weights_empty_raises():
+    with pytest.raises(ValueError):
+        equal_weights([])
+
+
+def test_two_stage_empty_clusters_raises():
+    win = _returns_window()
+    with pytest.raises(ValueError):
+        two_stage_weights({}, win, CFG.portfolio)
+
+
 def test_optimised_weights_respect_cap_and_sum():
     win = _returns_window()
     cap = CFG.portfolio.cap(len(win.columns))
