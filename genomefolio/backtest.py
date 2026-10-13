@@ -273,7 +273,7 @@ def run_backtest(
     tickers = list(returns.columns)
     cap = cfg.portfolio.cap(len(tickers))
     if method == "sector":
-        sector_map = load_sectors()
+        sector_map = load_sectors(cfg.universe.sectors_path)
         validate_sector_coverage(sector_map, tickers)
 
     prev_w = pd.Series(0.0, index=tickers)

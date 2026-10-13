@@ -8,6 +8,7 @@ universe:
   end: "2025-01-01"
   cache_dir: "data/cache"
   fixture_path: "data/sample/prices.csv"
+  sectors_path: "config/sectors.yaml"
   min_history_years: 10
 
 split:

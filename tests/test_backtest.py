@@ -173,3 +173,22 @@ def test_bootstrap_cis_are_order_independent():
     a, b = compute(["x", "y"]), compute(["y", "x"])
     assert a["x"]["sharpe_diff"] == b["x"]["sharpe_diff"]
     assert a["y"]["sharpe_diff"] == b["y"]["sharpe_diff"]
+
+
+def test_alt_fixture_sector_control_is_fully_invested():
+    from dataclasses import replace
+
+    cfg = replace(
+        CFG,
+        universe=replace(
+            CFG.universe,
+            tickers=("ORCL", "ADBE", "CRM", "QCOM", "TXN", "IBM", "ABT", "BMY", "LLY", "TGT", "LOW", "SBUX"),
+            fixture_path="data/sample/prices_alt.csv",
+            sectors_path="config/sectors_alt.yaml",
+        ),
+    )
+    r = align_to_common_days(to_returns(load_fixture(cfg)))
+    assert r.shape[1] == 12
+    res = run_backtest(r, cfg, method="sector", n_draws=5, cost_bps=0.0)
+    for w in res.weights.values():
+        assert abs(float(w.sum()) - 1.0) < 1e-6

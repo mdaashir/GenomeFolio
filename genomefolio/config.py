@@ -35,6 +35,7 @@ class UniverseConfig:
     cache_dir: str
     fixture_path: str
     min_history_years: int
+    sectors_path: str = "config/sectors.yaml"
 
 
 @dataclass(frozen=True)
@@ -192,6 +193,7 @@ def load_config(path: str | Path | None = None) -> Config:
             cache_dir=str(u["cache_dir"]),
             fixture_path=str(u["fixture_path"]),
             min_history_years=int(u["min_history_years"]),
+            sectors_path=str(u.get("sectors_path", "config/sectors.yaml")),
         ),
         split=SplitConfig(enabled=bool(s["enabled"]), tune_fraction=float(s["tune_fraction"])),
         symbolize=SymbolizeConfig(
