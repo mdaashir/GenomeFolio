@@ -288,12 +288,12 @@ def _validate(cfg: Config) -> None:
         raise ValueError("split.tune_fraction must be inside (0, 1)")
     if not (0.0 < cfg.null_test.gate_percentile < 100.0):
         raise ValueError("null_test.gate_percentile must be inside (0, 100)")
-    if cfg.portfolio.cluster_method not in {"equal", "risk_parity", "forecast_tilt"}:
-        raise ValueError("portfolio.cluster_method must be equal|risk_parity|forecast_tilt")
+    if cfg.portfolio.cluster_method not in {"equal", "risk_parity", "risk_parity_lw", "forecast_tilt"}:
+        raise ValueError("portfolio.cluster_method must be equal|risk_parity|risk_parity_lw|forecast_tilt")
     if cfg.symbolize.quantile_scope not in {"per_stock", "pooled"}:
         raise ValueError("symbolize.quantile_scope must be per_stock|pooled")
-    if cfg.portfolio.within_cluster not in {"equal", "inverse_vol"}:
-        raise ValueError("portfolio.within_cluster must be equal|inverse_vol")
+    if cfg.portfolio.within_cluster not in {"equal", "inverse_vol", "inverse_vol_lw"}:
+        raise ValueError("portfolio.within_cluster must be equal|inverse_vol|inverse_vol_lw")
     if cfg.costs.base_bps < 0:
         raise ValueError("costs.base_bps must be >= 0")
     if not (0.0 < cfg.bootstrap.confidence < 1.0):

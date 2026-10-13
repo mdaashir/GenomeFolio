@@ -61,6 +61,17 @@ def _inverse_vol(returns_window: pd.DataFrame) -> np.ndarray:
     return inv / inv.sum()
 
 
+def _ledoit_wolf_vols(frame: pd.DataFrame) -> np.ndarray:
+    """Volatilities from a Ledoit-Wolf shrunk covariance (robust to estimation error)."""
+    from sklearn.covariance import LedoitWolf
+
+    X = frame.to_numpy(dtype=float)
+    if X.shape[1] == 1:
+        return np.array([float(np.std(X[:, 0], ddof=0))])
+    cov = LedoitWolf().fit(X).covariance_
+    return np.sqrt(np.clip(np.diag(cov), 0.0, None))
+
+
 def _cluster_first_stage(
     clusters: dict[int, tuple[str, ...]],
     returns_window: pd.DataFrame,
@@ -70,8 +81,14 @@ def _cluster_first_stage(
     ids = sorted(clusters)
     sizes = np.array([len(clusters[c]) for c in ids], dtype=float)
 
-    if cfg.cluster_method == "risk_parity":
-        vols = np.array([returns_window[list(clusters[c])].mean(axis=1).std(ddof=0) for c in ids])
+    if cfg.cluster_method in {"risk_parity", "risk_parity_lw"}:
+        composites = pd.DataFrame(
+            {c: returns_window[list(clusters[c])].mean(axis=1) for c in ids}
+        )
+        if cfg.cluster_method == "risk_parity_lw" and composites.shape[1] > 1:
+            vols = _ledoit_wolf_vols(composites)
+        else:
+            vols = composites.std(ddof=0).to_numpy()
         inv = 1.0 / np.where(vols > 0, vols, np.nanmean(vols))
         w = inv / inv.sum()
     elif cfg.cluster_method == "forecast_tilt" and forecasts is not None:
@@ -109,6 +126,10 @@ def two_stage_weights(
         sub = returns_window[members]
         if cfg.within_cluster == "equal":
             base = np.full(len(members), 1.0 / len(members))
+        elif cfg.within_cluster == "inverse_vol_lw":
+            vols = _ledoit_wolf_vols(sub)
+            inv = 1.0 / np.where(vols > 0, vols, np.nanmean(vols) if np.any(vols > 0) else 1.0)
+            base = inv / inv.sum()
         else:
             base = _inverse_vol(sub)
         block = base * cluster_w[idx]

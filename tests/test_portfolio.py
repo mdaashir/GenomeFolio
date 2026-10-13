@@ -191,3 +191,18 @@ def test_cap_non_binding_leaves_weights_unsaturated():
     w = two_stage_weights(clusters, win, cfg)
     assert w.sum() == pytest.approx(1.0)
     assert (w < 1.0).all()  # no single stock held whole
+
+
+def test_ledoit_wolf_allocators_are_valid_and_differ_from_sample():
+    from dataclasses import replace
+
+    win = _returns_window()
+    clusters = {0: tuple(win.columns[:4]), 1: tuple(win.columns[4:])}
+    for cm, wc in (("risk_parity_lw", "inverse_vol_lw"), ("risk_parity", "inverse_vol")):
+        cfg = replace(CFG.portfolio, cluster_method=cm, within_cluster=wc)
+        w = two_stage_weights(clusters, win, cfg)
+        assert w.sum() == pytest.approx(1.0)
+        assert (w >= -1e-12).all()
+    sample = two_stage_weights(clusters, win, replace(CFG.portfolio, cluster_method="risk_parity"))
+    lw = two_stage_weights(clusters, win, replace(CFG.portfolio, cluster_method="risk_parity_lw"))
+    assert not np.allclose(sample.to_numpy(), lw.to_numpy())
