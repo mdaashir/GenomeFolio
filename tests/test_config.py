@@ -85,3 +85,35 @@ def test_quantile_scope_default_and_validation(tmp_path):
     path.write_text(yaml.safe_dump(data), encoding="utf-8")
     with pytest.raises(ValueError):
         load_config(path)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda d: d["window"].__setitem__("train_days", 0),
+        lambda d: d["window"].__setitem__("rebalance_days", -1),
+        lambda d: d["window"].__setitem__("forecast_horizon", 0),
+        lambda d: d["align"].__setitem__("match_score", 0.0),
+        lambda d: d["align"].__setitem__("band_sweep", [2, -1]),
+        lambda d: d["null_test"].__setitem__("n_draws_report", 0),
+        lambda d: d["bootstrap"].__setitem__("n_resamples", 0),
+        lambda d: d["bootstrap"].__setitem__("block_length", 0),
+        lambda d: d["costs"].__setitem__("sweep_bps", []),
+        lambda d: d["costs"].__setitem__("base_bps", -1.0),
+        lambda d: d["portfolio"].__setitem__("cap_floor", 0.0),
+        lambda d: d["portfolio"].__setitem__("cap_factor", 0.0),
+        lambda d: d["portfolio"].__setitem__("forecast_tilt_strength", -1.0),
+        lambda d: d["forecast"].__setitem__("model", "bogus"),
+        lambda d: d["cluster"].__setitem__("linkage", "bogus"),
+        lambda d: d["universe"].__setitem__("tickers", ["AAPL", "AAPL"]),
+        lambda d: d["universe"].__setitem__("start", "2025-01-01"),
+        lambda d: d["universe"].__setitem__("start", "not-a-date"),
+    ],
+)
+def test_invalid_config_values_rejected(tmp_path, mutate):
+    data = yaml.safe_load(open("config/params.yaml", encoding="utf-8"))
+    mutate(data)
+    path = tmp_path / "bad.yaml"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_config(path)

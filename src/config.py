@@ -13,6 +13,7 @@ here so bad config fails fast and loudly.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -21,6 +22,8 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PARAMS_PATH = REPO_ROOT / "config" / "params.yaml"
 DEFAULT_SECTORS_PATH = REPO_ROOT / "config" / "sectors.yaml"
+
+_SCIPY_LINKAGES = {"single", "complete", "average", "weighted", "centroid", "median", "ward"}
 
 
 def _tuple(values: Any) -> tuple:
@@ -292,6 +295,36 @@ def _validate(cfg: Config) -> None:
         raise ValueError("costs.base_bps must be >= 0")
     if not (0.0 < cfg.bootstrap.confidence < 1.0):
         raise ValueError("bootstrap.confidence must be inside (0, 1)")
+    if len(set(cfg.universe.tickers)) != len(cfg.universe.tickers):
+        raise ValueError("universe.tickers must be unique")
+    try:
+        start, end = date.fromisoformat(cfg.universe.start), date.fromisoformat(cfg.universe.end)
+    except ValueError as exc:
+        raise ValueError("universe.start/end must be ISO dates (YYYY-MM-DD)") from exc
+    if start >= end:
+        raise ValueError("universe.start must be before universe.end")
+    if cfg.window.train_days < 1 or cfg.window.rebalance_days < 1 or cfg.window.forecast_horizon < 1:
+        raise ValueError("window.train_days, rebalance_days and forecast_horizon must be >= 1")
+    if cfg.align.match_score <= 0:
+        raise ValueError("align.match_score must be > 0")
+    if cfg.align.band_sweep and min(cfg.align.band_sweep) < 0:
+        raise ValueError("align.band_sweep entries must be >= 0")
+    if cfg.cluster.linkage not in _SCIPY_LINKAGES:
+        raise ValueError(f"cluster.linkage must be one of {sorted(_SCIPY_LINKAGES)}")
+    if cfg.null_test.n_draws_tuning < 1 or cfg.null_test.n_draws_report < 1:
+        raise ValueError("null_test.n_draws_tuning and n_draws_report must be >= 1")
+    if cfg.bootstrap.block_length < 1 or cfg.bootstrap.n_resamples < 1:
+        raise ValueError("bootstrap.block_length and n_resamples must be >= 1")
+    if not cfg.costs.sweep_bps or min(cfg.costs.sweep_bps) < 0:
+        raise ValueError("costs.sweep_bps must be a non-empty list of values >= 0")
+    if not (0.0 < cfg.portfolio.cap_floor <= 1.0):
+        raise ValueError("portfolio.cap_floor must be inside (0, 1]")
+    if cfg.portfolio.cap_factor <= 0:
+        raise ValueError("portfolio.cap_factor must be > 0")
+    if cfg.portfolio.forecast_tilt_strength < 0:
+        raise ValueError("portfolio.forecast_tilt_strength must be >= 0")
+    if cfg.forecast.model not in {"arima", "spline"}:
+        raise ValueError("forecast.model must be arima|spline")
 
 
 def load_sectors(path: str | Path | None = None) -> dict[str, tuple[str, ...]]:
