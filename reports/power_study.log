@@ -1,0 +1,10 @@
+[21:05:03] original: tickers=20 days=3019
+[21:05:11]   per_stock: sharpe=0.803 dsr=0.909
+[21:05:18]   pooled_mnl: sharpe=0.901 dsr=0.950
+[21:05:22] holdout: tickers=20 days=3019
+[21:05:30]   per_stock: sharpe=1.065 dsr=0.985
+[21:05:37]   pooled_mnl: sharpe=1.059 dsr=0.984
+[21:05:40] alt: tickers=12 days=1257
+[21:05:42]   per_stock: sharpe=0.761 dsr=0.581
+[21:05:44]   pooled_mnl: sharpe=0.762 dsr=0.582
+[21:05:47] wrote power_study.csv, power_study_ci.csv, power_study_daily.csv, power_study_meta.json

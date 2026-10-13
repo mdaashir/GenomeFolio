@@ -1,0 +1,75 @@
+{
+  "spec": {
+    "name": "smoke",
+    "universe": "alt",
+    "universe_spec": {
+      "tickers": [
+        "ORCL",
+        "ADBE",
+        "CRM",
+        "QCOM",
+        "TXN",
+        "IBM",
+        "ABT",
+        "BMY",
+        "LLY",
+        "TGT",
+        "LOW",
+        "SBUX"
+      ],
+      "start": "2019-01-01",
+      "end": "2024-01-01",
+      "cache_dir": "data/cache_alt",
+      "fixture": "data/sample/prices_alt.csv"
+    },
+    "arms": [
+      "pooled_mnl",
+      "per_stock"
+    ],
+    "reference": "equal_weight",
+    "primary": "pooled_mnl",
+    "comparison": "higher_sharpe",
+    "n_trials": 2,
+    "params_sha256_8": "4b42306d",
+    "git_commit": "b0eb3ec4adb29a79786420d9c7b696168fbf300e"
+  },
+  "metrics": {
+    "pooled_mnl": {
+      "ann_return": 0.10473323704919202,
+      "ann_vol": 0.2217446327740324,
+      "sharpe": 0.5603709159847061,
+      "max_drawdown": -0.3206380724364911
+    },
+    "per_stock": {
+      "ann_return": 0.08398916587047567,
+      "ann_vol": 0.2130470661568493,
+      "sharpe": 0.48532032871371905,
+      "max_drawdown": -0.333328609848049
+    },
+    "equal_weight": {
+      "ann_return": 0.09824229940291507,
+      "ann_vol": 0.2264702478621694,
+      "sharpe": 0.5272966769964854,
+      "max_drawdown": -0.32842347566374863
+    }
+  },
+  "primary_ci_vs_reference": {
+    "sharpe_method": [
+      -0.2783507922161685,
+      1.5312211475148179
+    ],
+    "sharpe_baseline": [
+      -0.3240969784196722,
+      1.4838937938160324
+    ],
+    "sharpe_diff": [
+      -0.07205268059151027,
+      0.14922828246431682
+    ],
+    "return_diff": [
+      -0.021243880808559695,
+      0.030891199492173903
+    ]
+  },
+  "verdict": "NOT SUPPORTED (CI includes 0)"
+}
