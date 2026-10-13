@@ -12,10 +12,11 @@ here so bad config fails fast and loudly.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 import yaml
 
@@ -170,7 +171,7 @@ def load_config(path: str | Path | None = None) -> Config:
     values so misconfiguration surfaces at startup rather than mid-backtest.
     """
     path = Path(path) if path is not None else DEFAULT_PARAMS_PATH
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(path, encoding="utf-8") as fh:
         raw = yaml.safe_load(fh)
 
     u = _section(raw, "universe")
@@ -343,7 +344,7 @@ def load_sectors(path: str | Path | None = None) -> dict[str, tuple[str, ...]]:
     the same size rules as the alignment clusters.
     """
     path = Path(path) if path is not None else DEFAULT_SECTORS_PATH
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(path, encoding="utf-8") as fh:
         raw = yaml.safe_load(fh)
     sectors = _section(raw, "sectors")
     groups = {str(k): tuple(v) for k, v in sectors.items()}

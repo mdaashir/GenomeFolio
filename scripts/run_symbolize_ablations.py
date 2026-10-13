@@ -151,7 +151,7 @@ def main(period: str = "report") -> None:
         if not labels:
             continue
         stability[name] = float(
-            np.mean([adjusted_rand_score(b.to_numpy(), l.to_numpy()) for b, l in zip(base, labels)])
+            np.mean([adjusted_rand_score(b.to_numpy(), lab.to_numpy()) for b, lab in zip(base, labels)])
         )
     pd.Series(stability, name="mean_ari_vs_baseline").to_csv(REPORTS / f"ablations_stability_{period}.csv")
     log(f"mean ARI vs baseline: {stability}")

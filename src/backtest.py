@@ -197,7 +197,10 @@ def paired_block_bootstrap(
 
     lo = (1.0 - confidence) / 2.0 * 100.0
     hi = (1.0 + confidence) / 2.0 * 100.0
-    ci = lambda a: (float(np.nanpercentile(a, lo)), float(np.nanpercentile(a, hi)))  # noqa: E731
+
+    def ci(values):
+        return (float(np.nanpercentile(values, lo)), float(np.nanpercentile(values, hi)))
+
     return {
         "sharpe_method": ci(sharpe_m),
         "sharpe_baseline": ci(sharpe_b),
@@ -442,7 +445,13 @@ def _print_report(report: dict, cfg: Config) -> None:
 
 def main(config_path, use_fixture, n_draws, cost_bps, methods, band_only):
     """Entry point shared by the CLI."""
-    from src.data import align_to_common_days, get_prices, load_fixture, time_split, to_returns
+    from src.data import (
+        align_to_common_days,
+        get_prices,
+        load_fixture,
+        time_split,
+        to_returns,
+    )
 
     cfg = load_config(config_path)
     prices = load_fixture(cfg) if use_fixture else get_prices(cfg)

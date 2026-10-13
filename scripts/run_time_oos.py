@@ -22,18 +22,18 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import run_holdout_eval as h  # noqa: E402  (shared arm builder)
+import run_holdout_eval as h
 
-from src.backtest import (  # noqa: E402
+from src.backtest import (
     paired_block_bootstrap,
     performance_metrics,
     politis_white_block_length,
     seed_for,
 )
-from src.config import load_config  # noqa: E402
-from src.data import align_to_common_days, get_prices, to_returns  # noqa: E402
-from src.portfolio import equal_weights  # noqa: E402
-from src.rolling import walk_forward_windows  # noqa: E402
+from src.config import load_config
+from src.data import align_to_common_days, get_prices, to_returns
+from src.portfolio import equal_weights
+from src.rolling import walk_forward_windows
 
 REPORTS = Path("reports")
 LOG = REPORTS / "time_oos.log"

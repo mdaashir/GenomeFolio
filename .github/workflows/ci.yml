@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run ruff check src tests scripts
+
+      - name: Type check
+        run: uv run mypy src
+
+      - name: Tests
+        run: uv run pytest --cov=src --cov-report=term-missing
+
+      - name: Fixture smoke (offline)
+        run: uv run python -m src.backtest --use-fixture --draws 10 --band-only

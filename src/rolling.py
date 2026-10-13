@@ -12,7 +12,7 @@ the rebalance and ``forward`` is the holding period that follows.
 
 from __future__ import annotations
 
-from typing import Iterator
+from collections.abc import Iterator
 
 import pandas as pd
 

@@ -15,11 +15,9 @@ windowing (training windows, tune/report split) is applied downstream.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pandas as pd
 
-from src.config import Config, REPO_ROOT
+from src.config import REPO_ROOT, Config
 
 _FIXTURE_TICKERS = ("AAPL", "MSFT", "INTC", "CSCO", "JPM", "JNJ", "PG", "XOM", "KO", "DIS")
 

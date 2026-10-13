@@ -30,9 +30,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.align import distance_matrix
 from src.backtest import paired_block_bootstrap, performance_metrics, seed_for
-from src.cluster import select_constrained_k
 from src.config import load_config
 from src.data import align_to_common_days, get_prices, time_split, to_returns
 from src.forecast import forecast_clusters

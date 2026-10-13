@@ -78,31 +78,25 @@ def _nw_banded_numba(a, b, S, gap_open, gap_extend, band):  # pragma: no cover
             Y[0, j] = gap_open + j * gap_extend
     for i in range(1, n + 1):
         jlo = i - band
-        if jlo < 1:
-            jlo = 1
+        jlo = max(jlo, 1)
         jhi = i + band
-        if jhi > m:
-            jhi = m
+        jhi = min(jhi, m)
         for j in range(jlo, jhi + 1):
             best = M[i - 1, j - 1]
-            if X[i - 1, j - 1] > best:
-                best = X[i - 1, j - 1]
-            if Y[i - 1, j - 1] > best:
-                best = Y[i - 1, j - 1]
+            best = max(best, X[i - 1, j - 1])
+            best = max(best, Y[i - 1, j - 1])
             M[i, j] = best + S[a[i - 1], b[j - 1]]
 
             x1 = M[i - 1, j] + gap_open + gap_extend
             x2 = X[i - 1, j] + gap_extend
-            X[i, j] = x1 if x1 > x2 else x2
+            X[i, j] = max(x2, x1)
 
             y1 = M[i, j - 1] + gap_open + gap_extend
             y2 = Y[i, j - 1] + gap_extend
-            Y[i, j] = y1 if y1 > y2 else y2
+            Y[i, j] = max(y2, y1)
     out = M[n, m]
-    if X[n, m] > out:
-        out = X[n, m]
-    if Y[n, m] > out:
-        out = Y[n, m]
+    out = max(out, X[n, m])
+    out = max(out, Y[n, m])
     return out
 
 
@@ -140,26 +134,21 @@ def _sw_numba(a, b, S, gap_open, gap_extend):  # pragma: no cover
             x_prev = X[i - 1, j - 1]
             y_prev = Y[i - 1, j - 1]
             prev = m_prev
-            if x_prev > prev:
-                prev = x_prev
-            if y_prev > prev:
-                prev = y_prev
+            prev = max(prev, x_prev)
+            prev = max(prev, y_prev)
             val = prev + S[a[i - 1], b[j - 1]]
-            M[i, j] = val if val > 0.0 else 0.0
+            M[i, j] = max(0.0, val)
             x1 = M[i - 1, j] + gap_open + gap_extend
             x2 = X[i - 1, j] + gap_extend
-            xv = x1 if x1 > x2 else x2
-            X[i, j] = xv if xv > 0.0 else 0.0
+            xv = max(x2, x1)
+            X[i, j] = max(0.0, xv)
             y1 = M[i, j - 1] + gap_open + gap_extend
             y2 = Y[i, j - 1] + gap_extend
-            yv = y1 if y1 > y2 else y2
-            Y[i, j] = yv if yv > 0.0 else 0.0
-            if M[i, j] > best:
-                best = M[i, j]
-            if X[i, j] > best:
-                best = X[i, j]
-            if Y[i, j] > best:
-                best = Y[i, j]
+            yv = max(y2, y1)
+            Y[i, j] = max(0.0, yv)
+            best = max(best, M[i, j])
+            best = max(best, X[i, j])
+            best = max(best, Y[i, j])
     return best
 
 
@@ -233,8 +222,7 @@ def distance_matrix(
             denom = np.sqrt(self_scores[a] * self_scores[b])
             sim = s / denom if denom > 0 else 0.0
             d = 1.0 - sim
-            if d < 0.0:
-                d = 0.0
+            d = max(d, 0.0)
             D[i, j] = D[j, i] = d
 
     if not np.allclose(D, D.T, atol=1e-9):
