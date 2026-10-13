@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.config import load_config, load_sectors
-from src.data import align_to_common_days, load_fixture, to_returns
-from src.portfolio import (
+from genomefolio.config import load_config, load_sectors
+from genomefolio.data import align_to_common_days, load_fixture, to_returns
+from genomefolio.portfolio import (
     cap_redistribute,
     correlation_clusters,
     equal_weights,
@@ -74,6 +74,17 @@ def test_equal_weights():
     assert np.allclose(w.to_numpy(), 1.0 / 3.0)
 
 
+def test_equal_weights_empty_raises():
+    with pytest.raises(ValueError):
+        equal_weights([])
+
+
+def test_two_stage_empty_clusters_raises():
+    win = _returns_window()
+    with pytest.raises(ValueError):
+        two_stage_weights({}, win, CFG.portfolio)
+
+
 def test_optimised_weights_respect_cap_and_sum():
     win = _returns_window()
     cap = CFG.portfolio.cap(len(win.columns))
@@ -81,6 +92,23 @@ def test_optimised_weights_respect_cap_and_sum():
     assert w.sum() == pytest.approx(1.0)
     assert (w >= -1e-9).all()
     assert (w <= cap + 1e-6).all()
+
+
+def test_mean_shrink_only_affects_mean_variance():
+    idx = pd.date_range("2020-01-01", periods=252, freq="B")
+    rng = np.random.default_rng(0)
+    X = rng.normal(0.0, 0.01, (252, 4))
+    X[:, 0] += 0.002  # a stock with a strong positive mean
+    win = pd.DataFrame(X, index=idx, columns=list("abcd"))
+    cap = CFG.portfolio.cap(4)
+    # minimum-variance ignores means, so shrinkage must not change it
+    mv0 = optimised_weights(win, cap, risk_aversion=0.0, mean_shrink=0.0)
+    mv1 = optimised_weights(win, cap, risk_aversion=0.0, mean_shrink=0.9)
+    assert np.allclose(mv0.to_numpy(), mv1.to_numpy())
+    # mean-variance tilts toward the high-mean stock; shrinking tempers it
+    full = optimised_weights(win, cap, risk_aversion=5.0, mean_shrink=0.0)
+    shrunk = optimised_weights(win, cap, risk_aversion=5.0, mean_shrink=0.99)
+    assert full["a"] >= shrunk["a"] - 1e-9
 
 
 def test_random_clusters_sizes_match():
@@ -128,3 +156,53 @@ def test_forecast_tilt_without_forecasts_falls_back_to_equal():
     cfg_tilt = replace(CFG.portfolio, cluster_method="forecast_tilt")
     w = two_stage_weights(clusters, win, cfg_tilt, forecasts=None)
     assert w.sum() == pytest.approx(1.0)
+
+
+def test_optimised_weights_handles_degenerate_covariance():
+    idx = pd.date_range("2020-01-01", periods=100, freq="B")
+    win = pd.DataFrame(np.zeros((100, 4)), index=idx, columns=list("abcd"))
+    cap = CFG.portfolio.cap(4)
+    w = optimised_weights(win, cap)
+    assert w.sum() == pytest.approx(1.0)
+    assert (w >= -1e-9).all()
+    assert (w <= cap + 1e-6).all()
+
+
+def test_inverse_vol_handles_zero_variance_stock():
+    from dataclasses import replace
+
+    idx = pd.date_range("2020-01-01", periods=100, freq="B")
+    rng = np.random.default_rng(0)
+    X = rng.normal(0.0, 0.01, (100, 4))
+    X[:, 3] = 0.0  # a zero-variance stock
+    win = pd.DataFrame(X, index=idx, columns=list("abcd"))
+    cfg = replace(CFG.portfolio, within_cluster="inverse_vol")
+    w = two_stage_weights({0: ("a", "b"), 1: ("c", "d")}, win, cfg)
+    assert w.sum() == pytest.approx(1.0)
+    assert np.isfinite(w.to_numpy()).all()
+
+
+def test_cap_non_binding_leaves_weights_unsaturated():
+    win = _returns_window()
+    clusters = {0: tuple(win.columns[:5]), 1: tuple(win.columns[5:])}
+    from dataclasses import replace
+
+    cfg = replace(CFG.portfolio, cap_floor=1.0)  # cap never binds with 10 stocks
+    w = two_stage_weights(clusters, win, cfg)
+    assert w.sum() == pytest.approx(1.0)
+    assert (w < 1.0).all()  # no single stock held whole
+
+
+def test_ledoit_wolf_allocators_are_valid_and_differ_from_sample():
+    from dataclasses import replace
+
+    win = _returns_window()
+    clusters = {0: tuple(win.columns[:4]), 1: tuple(win.columns[4:])}
+    for cm, wc in (("risk_parity_lw", "inverse_vol_lw"), ("risk_parity", "inverse_vol")):
+        cfg = replace(CFG.portfolio, cluster_method=cm, within_cluster=wc)
+        w = two_stage_weights(clusters, win, cfg)
+        assert w.sum() == pytest.approx(1.0)
+        assert (w >= -1e-12).all()
+    sample = two_stage_weights(clusters, win, replace(CFG.portfolio, cluster_method="risk_parity"))
+    lw = two_stage_weights(clusters, win, replace(CFG.portfolio, cluster_method="risk_parity_lw"))
+    assert not np.allclose(sample.to_numpy(), lw.to_numpy())

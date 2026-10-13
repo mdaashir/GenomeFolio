@@ -18,20 +18,11 @@ Baselines (comparisons, not the engine):
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 
-from src.config import ClusterConfig, PortfolioConfig
-
-
-@dataclass
-class ClusterForecastTilt:
-    """Cumulative expected returns per cluster, used for the modest tilt."""
-
-    expected: dict[int, float]
+from genomefolio.config import ClusterConfig, PortfolioConfig
 
 
 def cap_redistribute(weights, cap, max_iter: int = 200, tol: float = 1e-12) -> np.ndarray:
@@ -70,6 +61,17 @@ def _inverse_vol(returns_window: pd.DataFrame) -> np.ndarray:
     return inv / inv.sum()
 
 
+def _ledoit_wolf_vols(frame: pd.DataFrame) -> np.ndarray:
+    """Volatilities from a Ledoit-Wolf shrunk covariance (robust to estimation error)."""
+    from sklearn.covariance import LedoitWolf
+
+    X = frame.to_numpy(dtype=float)
+    if X.shape[1] == 1:
+        return np.array([float(np.std(X[:, 0], ddof=0))])
+    cov = LedoitWolf().fit(X).covariance_
+    return np.sqrt(np.clip(np.diag(cov), 0.0, None))
+
+
 def _cluster_first_stage(
     clusters: dict[int, tuple[str, ...]],
     returns_window: pd.DataFrame,
@@ -79,8 +81,14 @@ def _cluster_first_stage(
     ids = sorted(clusters)
     sizes = np.array([len(clusters[c]) for c in ids], dtype=float)
 
-    if cfg.cluster_method == "risk_parity":
-        vols = np.array([returns_window[list(clusters[c])].mean(axis=1).std(ddof=0) for c in ids])
+    if cfg.cluster_method in {"risk_parity", "risk_parity_lw"}:
+        composites = pd.DataFrame(
+            {c: returns_window[list(clusters[c])].mean(axis=1) for c in ids}
+        )
+        if cfg.cluster_method == "risk_parity_lw" and composites.shape[1] > 1:
+            vols = _ledoit_wolf_vols(composites)
+        else:
+            vols = composites.std(ddof=0).to_numpy()
         inv = 1.0 / np.where(vols > 0, vols, np.nanmean(vols))
         w = inv / inv.sum()
     elif cfg.cluster_method == "forecast_tilt" and forecasts is not None:
@@ -106,6 +114,8 @@ def two_stage_weights(
 ) -> pd.Series:
     """Return portfolio weights across all stocks for one rebalance."""
     tickers = [t for c in sorted(clusters) for t in clusters[c]]
+    if not tickers:
+        raise ValueError("two_stage_weights: clusters are empty (no stocks to allocate)")
     n = len(tickers)
     cap = cfg.cap(n)
     cluster_w = _cluster_first_stage(clusters, returns_window, cfg, forecasts)
@@ -116,6 +126,10 @@ def two_stage_weights(
         sub = returns_window[members]
         if cfg.within_cluster == "equal":
             base = np.full(len(members), 1.0 / len(members))
+        elif cfg.within_cluster == "inverse_vol_lw":
+            vols = _ledoit_wolf_vols(sub)
+            inv = 1.0 / np.where(vols > 0, vols, np.nanmean(vols) if np.any(vols > 0) else 1.0)
+            base = inv / inv.sum()
         else:
             base = _inverse_vol(sub)
         block = base * cluster_w[idx]
@@ -130,6 +144,8 @@ def two_stage_weights(
 def equal_weights(tickers) -> pd.Series:
     """Equal-weight across a single group (the gate-failure fallback)."""
     tickers = list(tickers)
+    if not tickers:
+        raise ValueError("equal_weights: no tickers given")
     return pd.Series(1.0 / len(tickers), index=tickers)
 
 
@@ -137,12 +153,13 @@ def optimised_weights(
     returns_window: pd.DataFrame,
     cap: float,
     risk_aversion: float = 0.0,
-    shrink_means: bool = False,
+    mean_shrink: float = 0.0,
 ) -> pd.Series:
     """Long-only, capped, sum-to-1 optimiser with Ledoit-Wolf covariance.
 
-    ``risk_aversion == 0`` gives the **minimum-variance** portfolio; ``> 0`` with
-    ``shrink_means`` gives the mean-variance variant using shrunk historical means.
+    ``risk_aversion == 0`` gives the **minimum-variance** portfolio; ``> 0`` gives the
+    mean-variance variant, with ``mean_shrink`` shrinking historical means toward zero
+    (``0`` = no shrinkage) to tame estimation error.
     """
     from sklearn.covariance import LedoitWolf
 
@@ -151,8 +168,8 @@ def optimised_weights(
     X = returns_window.to_numpy(dtype=float)
     cov = LedoitWolf().fit(X).covariance_
     mu = X.mean(axis=0)
-    if shrink_means:
-        mu = mu * 0.5  # shrink toward the grand mean (0 for demeaned-ish returns)
+    if mean_shrink > 0.0:
+        mu = mu * (1.0 - mean_shrink)
 
     def objective(w):
         return float(w @ cov @ w - risk_aversion * (w @ mu))
@@ -172,7 +189,7 @@ def optimised_weights(
 
 def correlation_clusters(returns_window: pd.DataFrame, cluster_cfg: ClusterConfig) -> dict[int, tuple[str, ...]]:
     """Cluster stocks by correlation distance (``1 - corr``) with the same k rules."""
-    from src.cluster import select_constrained_k
+    from genomefolio.cluster import select_constrained_k
 
     corr = returns_window.corr().to_numpy()
     D = 1.0 - corr

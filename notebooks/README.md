@@ -2,7 +2,7 @@
 
 Throwaway exploration lives here — dendrogram inspection, band-sweep stability, the
 null-silhouette distribution, and quick sanity checks. Nothing in `notebooks/` is
-imported by `src/` or covered by tests; promote anything durable into `src/`.
+imported by `genomefolio/` or covered by tests; promote anything durable into `genomefolio/`.
 
 Suggested starting points:
 

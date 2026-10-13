@@ -6,7 +6,7 @@ Hierarchical average linkage (UPGMA) on the normalised alignment distance, with 
 ``min_cluster_size`` members** (silhouette otherwise favours k = 2 with ~20 stocks).
 
 ``select_constrained_k`` is the single source of truth for the k-selection rule; the
-null gate (``src/null_test.py``) reuses it so the real and null clusterings are treated
+null gate (``genomefolio/null_test.py``) reuses it so the real and null clusterings are treated
 identically.
 
 Also provides a **band sweep** (re-cluster at several band widths) plus Adjusted Rand
@@ -15,6 +15,7 @@ Index stability, so the chosen solution is not an artefact of one band.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
@@ -23,7 +24,7 @@ from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.spatial.distance import squareform
 from sklearn.metrics import adjusted_rand_score, silhouette_score
 
-from src.config import AlignConfig, ClusterConfig
+from genomefolio.config import AlignConfig, ClusterConfig
 
 
 @dataclass
@@ -78,6 +79,13 @@ def select_constrained_k(
         candidates.append((sil, k, labels, ok))
 
     ok_candidates = [c for c in candidates if c[3]]
+    if not ok_candidates:
+        warnings.warn(
+            "no k satisfied min_cluster_size; returning the best-silhouette cut anyway "
+            "(min_size_ok=False)",
+            RuntimeWarning,
+            stacklevel=2,
+        )
     pool = ok_candidates if ok_candidates else candidates
     best = max(pool, key=lambda c: c[0])
     sil, k, labels, ok = best
@@ -89,7 +97,7 @@ def band_sweep(
     symbols: pd.DataFrame, align_cfg: AlignConfig, cluster_cfg: ClusterConfig, bands
 ) -> dict[int, ClusteringResult]:
     """Cluster at each band width in ``bands`` (re-aligning each time)."""
-    from src.align import distance_matrix
+    from genomefolio.align import distance_matrix
 
     out: dict[int, ClusteringResult] = {}
     for w in bands:
@@ -110,3 +118,24 @@ def stability_ari(results: dict[int, ClusteringResult]) -> pd.DataFrame:
             lj = results[bj].labels.to_numpy()
             M[i, j] = adjusted_rand_score(li, lj)
     return pd.DataFrame(M, index=bands, columns=bands)
+
+
+def consensus_distance(symbols: pd.DataFrame, align_cfg: AlignConfig, bands) -> pd.DataFrame:
+    """Median alignment distance across several band widths.
+
+    Addresses the band-sensitivity weakness (a single band is an arbitrary choice): the
+    element-wise median over ``bands`` is a more robust similarity to cluster on.
+    """
+    from genomefolio.align import distance_matrix
+
+    mats = [distance_matrix(symbols, align_cfg, band=int(w)).to_numpy() for w in bands]
+    med = np.median(np.stack(mats), axis=0)
+    cols = list(symbols.columns)
+    return pd.DataFrame(med, index=cols, columns=cols)
+
+
+def consensus_clustering(
+    symbols: pd.DataFrame, align_cfg: AlignConfig, cluster_cfg: ClusterConfig, bands
+) -> ClusteringResult:
+    """Constrained-k clustering on the band-consensus distance."""
+    return select_constrained_k(consensus_distance(symbols, align_cfg, bands), cluster_cfg, cluster_cfg.linkage)

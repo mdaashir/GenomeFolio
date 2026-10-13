@@ -30,16 +30,15 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.align import distance_matrix
-from src.backtest import paired_block_bootstrap, performance_metrics
-from src.cluster import select_constrained_k
-from src.config import load_config
-from src.data import align_to_common_days, get_prices, time_split, to_returns
-from src.forecast import forecast_clusters
-from src.null_test import evaluate_gate
-from src.portfolio import correlation_clusters, equal_weights, two_stage_weights
-from src.rolling import walk_forward_windows
-from src.symbolize import symbolize
+from genomefolio.backtest import paired_block_bootstrap, performance_metrics, seed_for
+from genomefolio.config import load_config
+from genomefolio.data import align_to_common_days, get_prices, time_split, to_returns
+from genomefolio.forecast import forecast_clusters
+from genomefolio.null_test import evaluate_gate
+from genomefolio.portfolio import correlation_clusters, equal_weights, two_stage_weights
+from genomefolio.reporting import save_series, write_run_meta
+from genomefolio.rolling import walk_forward_windows
+from genomefolio.symbolize import symbolize
 
 REPORTS = Path("reports")
 REPORTS.mkdir(exist_ok=True)
@@ -149,18 +148,20 @@ def main(n_draws: int) -> None:
 
     pd.DataFrame(metrics_rows).T.to_csv(REPORTS / "experiments.csv")
 
-    rng = np.random.default_rng(cfg.seed + 999)
     ci = {
         name: paired_block_bootstrap(
             daily[name], daily["equal_weight"],
             cfg.bootstrap.n_resamples, cfg.bootstrap.block_length,
-            cfg.bootstrap.confidence, rng, cfg.bootstrap.use_politis_white,
+            cfg.bootstrap.confidence, np.random.default_rng(seed_for(name, cfg.seed)),
+            cfg.bootstrap.use_politis_white,
         )
         for name in daily
         if name != "equal_weight"
     }
     pd.DataFrame(ci).T.to_csv(REPORTS / "experiments_ci.csv")
-    log("wrote experiments.csv and experiments_ci.csv")
+    save_series(daily, REPORTS / "experiments_daily.csv")
+    write_run_meta(REPORTS / "experiments_meta.json", cfg, {"n_draws": n_draws})
+    log("wrote experiments.csv, experiments_ci.csv, experiments_daily.csv, experiments_meta.json")
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ Large-caps share a market factor, so nearly every pair beats an i.i.d. shuffle a
    autocorrelation and volatility clustering and break only the cross-stock alignment —
    unlike i.i.d. shuffling, which destroys both and makes the null too easy to beat.
 2. Run each null through the **identical constrained k selection** used for the real
-   run (``src.cluster.select_constrained_k``), so the null is not handicapped by a fixed
+   run (``genomefolio.cluster.select_constrained_k``), so the null is not handicapped by a fixed
    k while the real run takes a maximum over k.
 3. **Gate**: the real silhouette must beat the configured percentile (95th) of the null
    silhouettes. The pass fraction across rebalances is later read against the ~5% chance
@@ -26,9 +26,9 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from src.align import distance_matrix
-from src.cluster import ClusteringResult, select_constrained_k
-from src.config import AlignConfig, ClusterConfig, NullTestConfig
+from genomefolio.align import distance_matrix
+from genomefolio.cluster import ClusteringResult, select_constrained_k
+from genomefolio.config import AlignConfig, ClusterConfig, NullTestConfig
 
 
 @dataclass
@@ -128,3 +128,18 @@ def evaluate_gate(
         fdr_significant_fraction=float(sig.mean()) if sig.size else float("nan"),
         pair_pvalues=pair_pvalues,
     )
+
+
+def factor_neutral_symbols(
+    window_returns: pd.DataFrame, cutoffs, quantile_scope: str = "per_stock"
+) -> pd.DataFrame:
+    """Symbols of **market-neutral** (factor-residual) returns.
+
+    The circular-shift gate passes ~90% on raw symbols because equities share a market
+    factor, so any pair co-moves. Gating on factor-residual returns removes that shared
+    component (stock return minus the equal-weight universe return, per day) so the gate
+    tests residual pattern structure instead — a factor-model null.
+    """
+    from genomefolio.symbolize import market_neutralize, symbolize
+
+    return symbolize(market_neutralize(window_returns), cutoffs, quantile_scope=quantile_scope)

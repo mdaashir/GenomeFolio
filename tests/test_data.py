@@ -1,5 +1,5 @@
-from src.config import load_config
-from src.data import (
+from genomefolio.config import load_config
+from genomefolio.data import (
     align_to_common_days,
     load_fixture,
     time_split,

@@ -3,23 +3,25 @@
 Sequence-alignment clustering of financial return patterns → diversified, walk-forward
 portfolio with a bias-aware backtest.
 
+**Consolidated report: `reports/REPORT.md`.**
+
 ## Pipeline status
 
 | Stage | Module | Status |
 |-------|--------|--------|
-| 1. Data (prices → returns) | `src/data.py` | done, tested |
-| 2. Symbolization (5-symbol alphabet) | `src/symbolize.py` | done, tested |
-| 3. Alignment (banded NW, affine gaps) | `src/align.py` | done, tested |
-| 4. Clustering (constrained k, band sweep) | `src/cluster.py` | done, tested |
-| 5. Shuffled-null gate (circular shift) | `src/null_test.py` | done, tested |
-| 6. Forecast (per-cluster ARIMA) | `src/forecast.py` | done, tested |
-| 7. Portfolio (two-stage + caps) | `src/portfolio.py` | done, tested |
-| 8. Rolling update | `src/rolling.py` | done |
-| 9. Backtest + metrics + bootstrap | `src/backtest.py` | done, tested |
+| 1. Data (prices → returns) | `genomefolio/data.py` | done, tested |
+| 2. Symbolization (5-symbol alphabet) | `genomefolio/symbolize.py` | done, tested |
+| 3. Alignment (banded NW, affine gaps) | `genomefolio/align.py` | done, tested |
+| 4. Clustering (constrained k, band sweep) | `genomefolio/cluster.py` | done, tested |
+| 5. Shuffled-null gate (circular shift) | `genomefolio/null_test.py` | done, tested |
+| 6. Forecast (per-cluster ARIMA) | `genomefolio/forecast.py` | done, tested |
+| 7. Portfolio (two-stage + caps) | `genomefolio/portfolio.py` | done, tested |
+| 8. Rolling update | `genomefolio/rolling.py` | done |
+| 9. Backtest + metrics + bootstrap | `genomefolio/backtest.py` | done, tested |
 | — Evaluation / write-up | `reports/RESULTS.md`, this file | done |
 
 Test suite: `uv run pytest` (60 tests). Smoke run:
-`uv run python -m src.backtest --use-fixture --draws 30`.
+`uv run python -m genomefolio.backtest --use-fixture --draws 30`.
 
 ## Parameters chosen and why
 
@@ -145,8 +147,74 @@ result in `reports/HOLDOUT.md`.
 - **Conclusion: no symbolization reliably beats equal weight.** The report-period win did
   not survive the holdout — exactly as the replication check predicted.
 
+## Time-disjoint OOS
+
+`uv run python scripts/run_time_oos.py` — spec `reports/PREREGISTRATION_TIME.md`, result
+`reports/TIME_OOS.md`.
+
+- Original universe, 2005-2012 (includes 2008), 83 rebalances. **H2 NOT SUPPORTED**:
+  Sharpe-diff 95% CI (-0.006, 0.141) includes 0.
+- **Pattern: `pooled_mnl` beats equal weight in all four evaluations** (report +0.030,
+  tune +0.021, holdout universe +0.020, time OOS +0.068) but **never significantly**.
+  Consistent sign, underpowered.
+- Conclusion unchanged: no confirmed beat. Magnitude-aware, market-neutral symbolization is
+  directionally (not significantly) better across four tests; the run is underpowered, not
+  the method proven worthless.
+
 ## Next steps
 
-1. Optional: a genuinely disjoint time period (pre-2013) if a time-based out-of-sample
-   check is wanted for the report.
-2. Optional: replace the crude Politis-White rule with the full automatic selection.
+1. Increase power (more stocks, longer history, international universes) to test whether
+   the small consistent edge is real.
+2. Reduce the specification search: freeze one symbolization + allocator and evaluate only
+   on fresh universes/periods — the pre-registration template is in `reports/`.
+
+**Done:** full Politis–White automatic block-length selection (`politis_white_block_length`);
+sensitivity re-run closes nothing out — both OOS CIs still include 0 (block 42 → (-0.003, 0.140);
+block 52 → (-0.061, 0.102)). See `reports/REPORT.md` §4.
+
+## Performance findings (branch `feature/future-work`)
+
+The null gate dominates runtime (~30 ms/draw at 20 stocks, T=252). Three optimizations were
+tried and **rejected on measurement**, then reverted rather than kept:
+
+- **Band-limited DP storage** (`(n+1)×(2w+1)` instead of full square): the full-square
+  allocation is cheap at T=252 (the expensive 458 ms case in earlier profiling was T=1257),
+  and the per-row band reset added overhead — 13.6 ms vs 8.3 ms per distance matrix. Reverted.
+- **Batched single-call distance kernel**: no win; Python→numba dispatch is negligible
+  (~1 µs/pair) next to the DP work.
+- **Thread-parallel gate draws**: slower (36.2 vs 30.9 ms/draw on 16 cores) because the
+  per-draw work is GIL/overhead-bound (pandas, RNG creation, scipy/sklearn), not kernel-bound.
+
+**Conclusion:** the alignment kernel is already fast; the lever is **process** parallelism or
+cutting per-draw Python/pandas overhead, not the DP itself. Same conclusion recorded in the
+future-work plan. Two useful tests survive from the attempt: numba-vs-python distance parity
+and gate determinism.
+
+## Future work completed (branch `feature/future-work`)
+
+Everything from the future-work plan is done except nothing — all items closed:
+
+- **Correctness (P0):** B1 coverage crash/under-investment, B2 optimiser knobs in config,
+  B3 full config validation, B4 band guard, B5 undersized-cluster warning, B6 order-independent
+  bootstrap seeds.
+- **Performance (P1):** O1–O3 attempted and reverted on measurement (see above).
+- **Tests & fixtures (P1):** F1 alternate fixture universe + sector map, F2 conftest toy
+  fixtures (block distance, separable symbol frame), F3 no-look-ahead, F4 reproducibility,
+  F5 bug regressions, F6 CLI smoke, F7 allocator edge cases, F8 fixture golden.
+- **Infra (P2):** E1 CI workflow, E2 ruff/mypy config, E3 `genomefolio` console entry point,
+  E4 logging + `--verbose`, E5 run metadata, E6 daily-series persistence, E7 package rename
+  `src`→`genomefolio`, E8 mkdocs site, E9 dead-code cleanup.
+- **Research (P2):** M1 band-consensus clustering, M2 deflated Sharpe, M3 stationary
+  bootstrap, M4 DTW baseline (`method="dtw"`), M5 factor-model null gate, M6 rolling z-score
+  symbolization + 5/7/9-symbol alphabets, M7 Ledoit-Wolf risk-parity allocators, M8 spread +
+  impact cost model, M9 cross-universe power study, M10 generic pre-registration harness,
+  M11 robustness grid + plots.
+
+Suite grew to 146 tests (ruff + mypy clean). Results artifacts were regenerated with the new
+code: metrics are unchanged (e.g. alignment Sharpe 0.332, gate pass 0.903); only bootstrap CI
+bounds shift slightly from the B6 seeding change, and every pre-registered verdict is
+unchanged.
+
+**Perf(SPEED) / general cleanups / not-suppressed warnings:** the B5 warning is intentionally
+informational and fires on small universes; suppress with `PYTHONWARNINGS=ignore` when
+running scripts if it is noisy.

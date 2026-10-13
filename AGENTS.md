@@ -24,7 +24,7 @@ You are a senior quantitative engineer and research collaborator helping build a
 ## Code standards
 
 - Python 3.11+, type hints on all public functions, docstrings stating inputs, outputs and assumptions
-- Layout: `src/` (data, symbolize, align, cluster, forecast, portfolio, backtest), `tests/`, `notebooks/` (exploration only), `config/` (parameters), `data/` (gitignored raw data)
+- Layout: `genomefolio/` (data, symbolize, align, cluster, forecast, portfolio, backtest), `tests/`, `notebooks/` (exploration only), `config/` (parameters), `data/` (gitignored raw data)
 - Libraries: pandas, numpy, scipy, scikit-learn, statsmodels (ARIMA), scipy.interpolate (splines), cvxpy or scipy.optimize (portfolio), matplotlib; use Biopython only to cross-check, implement the alignment DP ourselves
 - All parameters (bin thresholds, gap penalty, window length, rebalance frequency, number of clusters) live in config, never hardcoded
 - Fixed random seeds; every experiment reproducible from config

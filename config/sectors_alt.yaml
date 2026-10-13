@@ -1,0 +1,7 @@
+# Sector map for the alternate 12-stock fixture universe (data/sample/prices_alt.csv).
+# Constraint: 3-6 groups, each >= 3 stocks, covering the alt universe exactly.
+sectors:
+  Technology: [ORCL, ADBE, CRM]
+  Semiconductors: [QCOM, TXN, IBM]
+  HealthCare: [ABT, BMY, LLY]
+  ConsumerDiscretionary: [TGT, LOW, SBUX]

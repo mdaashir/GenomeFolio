@@ -1,4 +1,4 @@
-# GenomeFolio parameters. Every knob lives here; nothing is hardcoded in src/.
+# GenomeFolio parameters. Every knob lives here; nothing is hardcoded in genomefolio/.
 seed: 42
 
 universe:
@@ -8,6 +8,7 @@ universe:
   end: "2025-01-01"
   cache_dir: "data/cache"
   fixture_path: "data/sample/prices.csv"
+  sectors_path: "config/sectors.yaml"
   min_history_years: 10
 
 split:
@@ -64,9 +65,13 @@ portfolio:
   cap_floor: 0.10             # cap = max(cap_floor, cap_factor / N)
   cap_factor: 1.5
   forecast_tilt_strength: 0.25
+  mv_risk_aversion: 0.5       # mean-variance risk aversion (0 = minimum variance)
+  mean_shrink: 0.5            # shrink historical means toward zero (0 = no shrink)
 
 costs:
   base_bps: 10.0
+  spread_bps: 0.0            # half-spread component
+  impact_coeff: 0.0          # square-root market impact (bps per turnover^0.5); 0 = flat model
   sweep_bps: [0, 5, 10, 15, 20, 25]
 
 bootstrap:

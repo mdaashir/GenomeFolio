@@ -1,0 +1,11 @@
+[21:04:16] report days=906 tickers=20 rebalances=31
+[21:04:19] band2_equal_equal: sharpe=0.659 dsr=0.323
+[21:04:21] band2_risk_parity_inverse_vol: sharpe=0.663 dsr=0.325
+[21:04:22] band2_risk_parity_lw_inverse_vol_lw: sharpe=0.663 dsr=0.325
+[21:04:24] band5_equal_equal: sharpe=0.330 dsr=0.162
+[21:04:26] band5_risk_parity_inverse_vol: sharpe=0.421 dsr=0.200
+[21:04:27] band5_risk_parity_lw_inverse_vol_lw: sharpe=0.410 dsr=0.195
+[21:04:29] band10_equal_equal: sharpe=0.506 dsr=0.240
+[21:04:31] band10_risk_parity_inverse_vol: sharpe=0.579 dsr=0.278
+[21:04:33] band10_risk_parity_lw_inverse_vol_lw: sharpe=0.576 dsr=0.276
+[21:04:34] wrote robustness_grid.csv, robustness_grid_daily.csv, figures/robustness_grid.png

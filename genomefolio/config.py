@@ -12,9 +12,11 @@ here so bad config fails fast and loudly.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 import yaml
 
@@ -22,9 +24,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PARAMS_PATH = REPO_ROOT / "config" / "params.yaml"
 DEFAULT_SECTORS_PATH = REPO_ROOT / "config" / "sectors.yaml"
 
-
-def _tuple(values: Any) -> tuple:
-    return tuple(values) if values is not None else ()
+_SCIPY_LINKAGES = {"single", "complete", "average", "weighted", "centroid", "median", "ward"}
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,7 @@ class UniverseConfig:
     cache_dir: str
     fixture_path: str
     min_history_years: int
+    sectors_path: str = "config/sectors.yaml"
 
 
 @dataclass(frozen=True)
@@ -105,6 +106,8 @@ class PortfolioConfig:
     cap_floor: float
     cap_factor: float
     forecast_tilt_strength: float
+    mv_risk_aversion: float = 0.5
+    mean_shrink: float = 0.5
 
     def cap(self, n: int) -> float:
         """Per-stock weight cap ``max(cap_floor, cap_factor / n)``.
@@ -119,6 +122,8 @@ class PortfolioConfig:
 class CostsConfig:
     base_bps: float
     sweep_bps: tuple[float, ...]
+    spread_bps: float = 0.0
+    impact_coeff: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -165,7 +170,7 @@ def load_config(path: str | Path | None = None) -> Config:
     values so misconfiguration surfaces at startup rather than mid-backtest.
     """
     path = Path(path) if path is not None else DEFAULT_PARAMS_PATH
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(path, encoding="utf-8") as fh:
         raw = yaml.safe_load(fh)
 
     u = _section(raw, "universe")
@@ -190,6 +195,7 @@ def load_config(path: str | Path | None = None) -> Config:
             cache_dir=str(u["cache_dir"]),
             fixture_path=str(u["fixture_path"]),
             min_history_years=int(u["min_history_years"]),
+            sectors_path=str(u.get("sectors_path", "config/sectors.yaml")),
         ),
         split=SplitConfig(enabled=bool(s["enabled"]), tune_fraction=float(s["tune_fraction"])),
         symbolize=SymbolizeConfig(
@@ -237,10 +243,14 @@ def load_config(path: str | Path | None = None) -> Config:
             cap_floor=float(po["cap_floor"]),
             cap_factor=float(po["cap_factor"]),
             forecast_tilt_strength=float(po["forecast_tilt_strength"]),
+            mv_risk_aversion=float(po.get("mv_risk_aversion", 0.5)),
+            mean_shrink=float(po.get("mean_shrink", 0.5)),
         ),
         costs=CostsConfig(
             base_bps=float(co["base_bps"]),
             sweep_bps=tuple(float(b) for b in co["sweep_bps"]),
+            spread_bps=float(co.get("spread_bps", 0.0)),
+            impact_coeff=float(co.get("impact_coeff", 0.0)),
         ),
         bootstrap=BootstrapConfig(
             block_length=int(bo["block_length"]),
@@ -264,8 +274,8 @@ def _validate(cfg: Config) -> None:
         ("symbolize.cutoffs", cfg.symbolize.cutoffs),
         ("symbolize.cutoffs_ablation", cfg.symbolize.cutoffs_ablation),
     ):
-        if len(cut) != 4:
-            raise ValueError(f"{name} must have exactly 4 cutoffs for the 5-symbol alphabet")
+        if len(cut) not in {4, 6, 8}:
+            raise ValueError(f"{name} must have 4, 6 or 8 cutoffs (5, 7 or 9 symbols)")
         if list(cut) != sorted(cut) or not all(0.0 < c < 1.0 for c in cut):
             raise ValueError(f"{name} must be strictly increasing and inside (0, 1)")
     if cfg.cluster.k_min < 2:
@@ -282,16 +292,52 @@ def _validate(cfg: Config) -> None:
         raise ValueError("split.tune_fraction must be inside (0, 1)")
     if not (0.0 < cfg.null_test.gate_percentile < 100.0):
         raise ValueError("null_test.gate_percentile must be inside (0, 100)")
-    if cfg.portfolio.cluster_method not in {"equal", "risk_parity", "forecast_tilt"}:
-        raise ValueError("portfolio.cluster_method must be equal|risk_parity|forecast_tilt")
+    if cfg.portfolio.cluster_method not in {"equal", "risk_parity", "risk_parity_lw", "forecast_tilt"}:
+        raise ValueError("portfolio.cluster_method must be equal|risk_parity|risk_parity_lw|forecast_tilt")
     if cfg.symbolize.quantile_scope not in {"per_stock", "pooled"}:
         raise ValueError("symbolize.quantile_scope must be per_stock|pooled")
-    if cfg.portfolio.within_cluster not in {"equal", "inverse_vol"}:
-        raise ValueError("portfolio.within_cluster must be equal|inverse_vol")
+    if cfg.portfolio.within_cluster not in {"equal", "inverse_vol", "inverse_vol_lw"}:
+        raise ValueError("portfolio.within_cluster must be equal|inverse_vol|inverse_vol_lw")
     if cfg.costs.base_bps < 0:
         raise ValueError("costs.base_bps must be >= 0")
+    if cfg.costs.spread_bps < 0 or cfg.costs.impact_coeff < 0:
+        raise ValueError("costs.spread_bps and costs.impact_coeff must be >= 0")
     if not (0.0 < cfg.bootstrap.confidence < 1.0):
         raise ValueError("bootstrap.confidence must be inside (0, 1)")
+    if len(set(cfg.universe.tickers)) != len(cfg.universe.tickers):
+        raise ValueError("universe.tickers must be unique")
+    try:
+        start, end = date.fromisoformat(cfg.universe.start), date.fromisoformat(cfg.universe.end)
+    except ValueError as exc:
+        raise ValueError("universe.start/end must be ISO dates (YYYY-MM-DD)") from exc
+    if start >= end:
+        raise ValueError("universe.start must be before universe.end")
+    if cfg.window.train_days < 1 or cfg.window.rebalance_days < 1 or cfg.window.forecast_horizon < 1:
+        raise ValueError("window.train_days, rebalance_days and forecast_horizon must be >= 1")
+    if cfg.align.match_score <= 0:
+        raise ValueError("align.match_score must be > 0")
+    if cfg.align.band_sweep and min(cfg.align.band_sweep) < 0:
+        raise ValueError("align.band_sweep entries must be >= 0")
+    if cfg.cluster.linkage not in _SCIPY_LINKAGES:
+        raise ValueError(f"cluster.linkage must be one of {sorted(_SCIPY_LINKAGES)}")
+    if cfg.null_test.n_draws_tuning < 1 or cfg.null_test.n_draws_report < 1:
+        raise ValueError("null_test.n_draws_tuning and n_draws_report must be >= 1")
+    if cfg.bootstrap.block_length < 1 or cfg.bootstrap.n_resamples < 1:
+        raise ValueError("bootstrap.block_length and n_resamples must be >= 1")
+    if not cfg.costs.sweep_bps or min(cfg.costs.sweep_bps) < 0:
+        raise ValueError("costs.sweep_bps must be a non-empty list of values >= 0")
+    if not (0.0 < cfg.portfolio.cap_floor <= 1.0):
+        raise ValueError("portfolio.cap_floor must be inside (0, 1]")
+    if cfg.portfolio.cap_factor <= 0:
+        raise ValueError("portfolio.cap_factor must be > 0")
+    if cfg.portfolio.forecast_tilt_strength < 0:
+        raise ValueError("portfolio.forecast_tilt_strength must be >= 0")
+    if cfg.portfolio.mv_risk_aversion < 0:
+        raise ValueError("portfolio.mv_risk_aversion must be >= 0")
+    if not (0.0 <= cfg.portfolio.mean_shrink < 1.0):
+        raise ValueError("portfolio.mean_shrink must be inside [0, 1)")
+    if cfg.forecast.model not in {"arima", "spline"}:
+        raise ValueError("forecast.model must be arima|spline")
 
 
 def load_sectors(path: str | Path | None = None) -> dict[str, tuple[str, ...]]:
@@ -302,7 +348,7 @@ def load_sectors(path: str | Path | None = None) -> dict[str, tuple[str, ...]]:
     the same size rules as the alignment clusters.
     """
     path = Path(path) if path is not None else DEFAULT_SECTORS_PATH
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(path, encoding="utf-8") as fh:
         raw = yaml.safe_load(fh)
     sectors = _section(raw, "sectors")
     groups = {str(k): tuple(v) for k, v in sectors.items()}
@@ -312,3 +358,19 @@ def load_sectors(path: str | Path | None = None) -> dict[str, tuple[str, ...]]:
         if len(members) < 3:
             raise ValueError(f"sector group '{name}' has {len(members)} stocks (< 3)")
     return groups
+
+
+def validate_sector_coverage(sectors: dict[str, tuple[str, ...]], universe) -> None:
+    """Ensure every universe ticker appears in the sector map.
+
+    The sector-cluster control filters members to the traded universe, so a universe not
+    covered by ``sectors.yaml`` would silently produce partial (or empty) clusters, an
+    under-invested book, or a ``ZeroDivisionError``. Fails loudly instead, naming the
+    missing tickers.
+    """
+    covered = {t for members in sectors.values() for t in members}
+    missing = sorted(set(universe) - covered)
+    if missing:
+        raise ValueError(
+            f"sectors.yaml does not cover the universe; missing: {missing}"
+        )

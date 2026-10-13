@@ -32,14 +32,15 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import adjusted_rand_score
 
-from src.align import distance_matrix
-from src.backtest import paired_block_bootstrap, performance_metrics
-from src.cluster import select_constrained_k
-from src.config import load_config
-from src.data import align_to_common_days, get_prices, time_split, to_returns
-from src.portfolio import correlation_clusters, equal_weights, two_stage_weights
-from src.rolling import walk_forward_windows
-from src.symbolize import symbolize
+from genomefolio.align import distance_matrix
+from genomefolio.backtest import paired_block_bootstrap, performance_metrics, seed_for
+from genomefolio.cluster import select_constrained_k
+from genomefolio.config import load_config
+from genomefolio.data import align_to_common_days, get_prices, time_split, to_returns
+from genomefolio.portfolio import correlation_clusters, equal_weights, two_stage_weights
+from genomefolio.reporting import save_series, write_run_meta
+from genomefolio.rolling import walk_forward_windows
+from genomefolio.symbolize import symbolize
 
 REPORTS = Path("reports")
 REPORTS.mkdir(exist_ok=True)
@@ -66,7 +67,7 @@ VARIANTS = [
 ]
 
 
-def _portfolio(daily_parts, tickers):
+def _portfolio(daily_parts):
     daily = pd.concat(daily_parts).sort_index()
     return daily
 
@@ -93,7 +94,7 @@ def main(period: str = "report") -> None:
     labels_by_variant: dict[str, list[pd.Series]] = {}
 
     def evaluate(name, parts, labels, ks):
-        d = _portfolio(parts, tickers)
+        d = _portfolio(parts)
         daily[name] = d
         m = performance_metrics(d)
         m["avg_k"] = float(np.mean(ks)) if ks else np.nan
@@ -151,23 +152,26 @@ def main(period: str = "report") -> None:
         if not labels:
             continue
         stability[name] = float(
-            np.mean([adjusted_rand_score(b.to_numpy(), l.to_numpy()) for b, l in zip(base, labels)])
+            np.mean([adjusted_rand_score(b.to_numpy(), lab.to_numpy()) for b, lab in zip(base, labels)])
         )
     pd.Series(stability, name="mean_ari_vs_baseline").to_csv(REPORTS / f"ablations_stability_{period}.csv")
     log(f"mean ARI vs baseline: {stability}")
 
-    rng = np.random.default_rng(cfg.seed + 999)
     ci = {
         name: paired_block_bootstrap(
             daily[name], daily["equal_weight"],
             cfg.bootstrap.n_resamples, cfg.bootstrap.block_length,
-            cfg.bootstrap.confidence, rng, cfg.bootstrap.use_politis_white,
+            cfg.bootstrap.confidence, np.random.default_rng(seed_for(name, cfg.seed)),
+            cfg.bootstrap.use_politis_white,
         )
         for name in daily
         if name != "equal_weight"
     }
     pd.DataFrame(ci).T.to_csv(REPORTS / f"ablations_ci_{period}.csv")
-    log(f"wrote ablations_{period}.csv, ablations_ci_{period}.csv, ablations_stability_{period}.csv")
+    save_series(daily, REPORTS / f"ablations_daily_{period}.csv")
+    write_run_meta(REPORTS / f"ablations_meta_{period}.json", cfg, {"period": period})
+    log(f"wrote ablations_{period}.csv, ablations_ci_{period}.csv, ablations_stability_{period}.csv, "
+        f"ablations_daily_{period}.csv, ablations_meta_{period}.json")
 
 
 if __name__ == "__main__":

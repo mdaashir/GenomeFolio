@@ -17,13 +17,16 @@ use the window ending at ``t`` only.
 
 from __future__ import annotations
 
+import logging
+import zlib
 from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
 
-from src.config import Config, load_config, load_sectors
-from src.portfolio import (
+from genomefolio.config import Config, load_config, load_sectors, validate_sector_coverage
+from genomefolio.costs import transaction_cost
+from genomefolio.portfolio import (
     correlation_clusters,
     equal_weights,
     optimised_weights,
@@ -34,6 +37,17 @@ from src.portfolio import (
 
 PERIODS_PER_YEAR = 252
 
+logger = logging.getLogger("genomefolio")
+
+
+def seed_for(label: str, base: int = 0) -> int:
+    """Deterministic per-comparison seed from a label.
+
+    Lets each bootstrap draw its own RNG so CIs do not depend on the order comparisons
+    happen to be computed in (a shared RNG advances across calls).
+    """
+    return (int(base) + zlib.crc32(label.encode("utf-8"))) % (2**32)
+
 
 @dataclass
 class BacktestResult:
@@ -43,14 +57,18 @@ class BacktestResult:
     gate_passed: dict = field(default_factory=dict)
     weights: dict = field(default_factory=dict)
     cost_bps: float = 0.0
+    spread_bps: float = 0.0
+    impact_coeff: float = 0.0
 
     def net_returns(self, cost_bps: float | None = None) -> pd.Series:
-        """Daily portfolio returns net of ``cost_bps`` on turnover, applied at each rebalance."""
+        """Daily portfolio returns net of the transaction-cost model, per rebalance."""
         bps = self.cost_bps if cost_bps is None else cost_bps
         parts = []
         for date, period in self.period_returns:
             p = period.copy()
-            p.iloc[0] -= (bps / 1e4) * float(self.turnover.get(date, 0.0))
+            p.iloc[0] -= transaction_cost(
+                float(self.turnover.get(date, 0.0)), bps, self.spread_bps, self.impact_coeff
+            )
             parts.append(p)
         return pd.concat(parts).sort_index() if parts else pd.Series(dtype=float)
 
@@ -96,19 +114,53 @@ def _ann_return(daily: np.ndarray) -> float:
     return float(np.prod(1.0 + daily) ** (PERIODS_PER_YEAR / len(daily)) - 1.0)
 
 
-def _politis_white_block_length(daily: np.ndarray) -> int:
-    """Crude automatic block length; falls back to sqrt(n) when undetermined."""
-    n = len(daily)
-    if n < 20:
-        return max(1, int(np.sqrt(n)))
-    # Simple rule-of-thumb using the first-order autocorrelation.
-    x = daily - daily.mean()
-    denom = float(x @ x)
-    rho = float(x[:-1] @ x[1:] / denom) if denom > 0 else 0.0
-    if abs(rho) < 1e-6:
-        return max(1, int(np.sqrt(n)))
-    candidate = int(np.ceil((2.0 * abs(rho) / (1.0 - abs(rho))) ** (2.0 / 3.0) * n ** (1.0 / 3.0)))
-    return int(np.clip(candidate, 1, n // 4 or 1))
+def _autocorrelations(x: np.ndarray, kmax: int) -> np.ndarray:
+    """Sample autocorrelations rho(1..kmax) of a demeaned series."""
+    xc = x - x.mean()
+    denom = float(xc @ xc)
+    if denom <= 0.0:
+        return np.zeros(kmax)
+    return np.array([float(xc[:-k] @ xc[k:]) / denom for k in range(1, kmax + 1)])
+
+
+def politis_white_block_length(x: np.ndarray, kind: str = "cb") -> int:
+    """Automatic block length, Politis & White (2004), for the (circular) block bootstrap.
+
+    Steps: (1) the largest lag ``m`` whose following ``K_n`` autocorrelations are all
+    insignificant at ``2 sqrt(log10(n)/n)``; (2) flatten with ``M = 2m``; (3) apply the
+    flat-top taper and the SB/CB variance constants. Falls back to ``sqrt(n)`` when the
+    series is too short, degenerate, or negatively autocorrelated.
+    """
+    x = np.asarray(x, dtype=float)
+    n = x.size
+    if n < 50:
+        return int(np.clip(round(np.sqrt(n)), 1, max(1, n)))
+    kn = int(min(n - 1, max(5, np.ceil(10.0 * np.log10(n)))))
+    kmax = int(min(n - 1, 3 * kn))
+    rho = _autocorrelations(x, kmax)
+
+    threshold = 2.0 * np.sqrt(np.log10(n) / n)
+    m_hat = kn
+    for i in range(1, kn + 1):
+        window = rho[i : min(i + kn, kmax)]
+        if window.size and np.all(np.abs(window) < threshold):
+            m_hat = i
+            break
+
+    M = int(min(2 * m_hat, kmax))
+    if M < 1:
+        return 1
+    k = np.arange(1, M + 1, dtype=float)
+    t = k / M
+    taper = np.where(t <= 0.5, 1.0, np.where(t <= 1.0, 2.0 * (1.0 - t), 0.0))
+    rk = rho[:M]
+    s = 1.0 + 2.0 * float(np.sum(taper * rk))  # symmetric sum over -M..M (k=0 term is 1)
+    g = 2.0 * float(np.sum(taper * k * rk))  # sum of |k| rho(k)
+    if g <= 0.0 or s == 0.0:
+        return int(np.clip(round(np.sqrt(n)), 1, n))
+    d = (2.0 if kind == "sb" else 4.0 / 3.0) * s * s
+    b = (2.0 * g * g / d) ** (1.0 / 3.0) * n ** (1.0 / 3.0)
+    return int(np.clip(round(b), 1, n))
 
 
 def paired_block_bootstrap(
@@ -133,7 +185,7 @@ def paired_block_bootstrap(
         nan = (np.nan, np.nan)
         return {"sharpe_method": nan, "sharpe_baseline": nan, "sharpe_diff": nan, "return_diff": nan}
 
-    L = _politis_white_block_length(m) if use_politis_white else block_length
+    L = politis_white_block_length(m) if use_politis_white else block_length
     L = int(np.clip(L, 1, n))
     n_blocks = int(np.ceil(n / L))
     starts_all = np.arange(0, n - L + 1)
@@ -153,7 +205,10 @@ def paired_block_bootstrap(
 
     lo = (1.0 - confidence) / 2.0 * 100.0
     hi = (1.0 + confidence) / 2.0 * 100.0
-    ci = lambda a: (float(np.nanpercentile(a, lo)), float(np.nanpercentile(a, hi)))  # noqa: E731
+
+    def ci(values):
+        return (float(np.nanpercentile(values, lo)), float(np.nanpercentile(values, hi)))
+
     return {
         "sharpe_method": ci(sharpe_m),
         "sharpe_baseline": ci(sharpe_b),
@@ -166,23 +221,23 @@ def paired_block_bootstrap(
 # Engine
 # --------------------------------------------------------------------------------------
 def _rebalance_positions(n: int, train_days: int, rebalance_days: int) -> list[int]:
-    from src.rolling import rebalance_positions
+    from genomefolio.rolling import rebalance_positions
 
     return rebalance_positions(n, train_days, rebalance_days)
 
 
 def _alignment_clusters(symbols, cfg: Config):
-    from src.align import distance_matrix
-    from src.cluster import select_constrained_k
+    from genomefolio.align import distance_matrix
+    from genomefolio.cluster import select_constrained_k
 
     D = distance_matrix(symbols, cfg.align)
     return select_constrained_k(D, cfg.cluster, cfg.cluster.linkage)
 
 
 def _alignment_weights(window, cfg: Config, rng: np.random.Generator, n_draws: int, gate_record: dict, date):
-    from src.forecast import forecast_clusters
-    from src.null_test import evaluate_gate
-    from src.symbolize import symbolize
+    from genomefolio.forecast import forecast_clusters
+    from genomefolio.null_test import evaluate_gate
+    from genomefolio.symbolize import symbolize
 
     symbols = symbolize(
         window,
@@ -218,11 +273,13 @@ def run_backtest(
     n_draws = n_draws if n_draws is not None else cfg.null_test.n_draws_report
     cost_bps = cfg.costs.base_bps if cost_bps is None else cost_bps
     date_rng = np.random.default_rng(cfg.seed)
-    sectors = load_sectors()
 
     positions = _rebalance_positions(len(returns), cfg.window.train_days, cfg.window.rebalance_days)
     tickers = list(returns.columns)
     cap = cfg.portfolio.cap(len(tickers))
+    if method == "sector":
+        sector_map = load_sectors(cfg.universe.sectors_path)
+        validate_sector_coverage(sector_map, tickers)
 
     prev_w = pd.Series(0.0, index=tickers)
     period_returns: list = []
@@ -242,18 +299,28 @@ def run_backtest(
         elif method == "equal_weight":
             w = equal_weights(tickers)
         elif method in {"min_variance", "mean_variance"}:
+            is_mv = method == "mean_variance"
             w = optimised_weights(
-                window, cap, risk_aversion=0.5 if method == "mean_variance" else 0.0,
-                shrink_means=(method == "mean_variance"),
+                window,
+                cap,
+                risk_aversion=cfg.portfolio.mv_risk_aversion if is_mv else 0.0,
+                mean_shrink=cfg.portfolio.mean_shrink if is_mv else 0.0,
             )
         elif method == "correlation":
             clusters = correlation_clusters(window, cfg.cluster)
             w = two_stage_weights(clusters, window, cfg.portfolio)
+        elif method == "dtw":
+            from genomefolio.cluster import select_constrained_k
+            from genomefolio.dtw import dtw_distance_matrix
+
+            D = dtw_distance_matrix(window, cfg.align.band)
+            clusters = select_constrained_k(D, cfg.cluster, cfg.cluster.linkage).clusters
+            w = two_stage_weights(clusters, window, cfg.portfolio)
         elif method == "sector":
-            clusters = sector_clusters(sectors, tickers)
+            clusters = sector_clusters(sector_map, tickers)
             w = two_stage_weights(clusters, window, cfg.portfolio)
         elif method == "random":
-            from src.symbolize import symbolize
+            from genomefolio.symbolize import symbolize
 
             clusters = _alignment_clusters(
                 symbolize(window, cfg.symbolize.cutoffs, quantile_scope=cfg.symbolize.quantile_scope), cfg
@@ -265,6 +332,12 @@ def run_backtest(
             raise ValueError(f"unknown method {method}")
 
         w = w.reindex(tickers).fillna(0.0)
+        total = float(w.sum())
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError(
+                f"method '{method}' produced weights summing to {total:.6f}; "
+                "the book must be fully invested (check cluster/universe coverage)"
+            )
 
         turnover = float((w - prev_w).abs().sum())
         turnover_records[date] = turnover
@@ -282,6 +355,8 @@ def run_backtest(
         gate_passed=gate_record,
         weights=weight_record,
         cost_bps=cost_bps,
+        spread_bps=cfg.costs.spread_bps,
+        impact_coeff=cfg.costs.impact_coeff,
     )
 
 
@@ -311,7 +386,9 @@ def gate_passed_only_view(results: dict[str, BacktestResult], reference: str = "
         for d, p in res.period_returns:
             if d in keep:
                 pp = p.copy()
-                pp.iloc[0] -= (res.cost_bps / 1e4) * float(res.turnover.get(d, 0.0))
+                pp.iloc[0] -= transaction_cost(
+                    float(res.turnover.get(d, 0.0)), res.cost_bps, res.spread_bps, res.impact_coeff
+                )
                 parts.append(pp)
         daily = pd.concat(parts) if parts else pd.Series(dtype=float)
         m = performance_metrics(daily)
@@ -325,8 +402,8 @@ def gate_passed_only_view(results: dict[str, BacktestResult], reference: str = "
 # --------------------------------------------------------------------------------------
 def band_sweep_report(returns: pd.DataFrame, cfg: Config) -> dict:
     """Cluster once on the latest training window across band widths; report stability."""
-    from src.cluster import band_sweep, stability_ari
-    from src.symbolize import symbolize
+    from genomefolio.cluster import band_sweep, stability_ari
+    from genomefolio.symbolize import symbolize
 
     window = returns.iloc[-cfg.window.train_days :]
     symbols = symbolize(
@@ -357,7 +434,6 @@ def run_full_report(
 
     cis = {}
     if "alignment" in results:
-        rng = np.random.default_rng(cfg.seed + 999)
         for name, res in results.items():
             if name == "alignment":
                 continue
@@ -367,7 +443,7 @@ def run_full_report(
                 cfg.bootstrap.n_resamples,
                 cfg.bootstrap.block_length,
                 cfg.bootstrap.confidence,
-                rng,
+                np.random.default_rng(seed_for(name, cfg.seed)),
                 cfg.bootstrap.use_politis_white,
             )
     return {"results": results, "table": table, "descriptive": descriptive, "cis": cis}
@@ -375,34 +451,42 @@ def run_full_report(
 
 def _print_report(report: dict, cfg: Config) -> None:
     pd.set_option("display.width", 160)
-    print("\n=== Metrics (all methods, identical windows) ===")
-    print(report["table"].round(4).to_string())
+    logger.info("\n=== Metrics (all methods, identical windows) ===")
+    logger.info("\n%s", report["table"].round(4).to_string())
     if report.get("descriptive") is not None:
-        print("\n=== Alignment gate-passed-only (descriptive, no CI; baselines on same rebalances) ===")
-        print(report["descriptive"].round(4).to_string())
+        logger.info("\n=== Alignment gate-passed-only (descriptive, no CI; baselines on same rebalances) ===")
+        logger.info("\n%s", report["descriptive"].round(4).to_string())
     if report["cis"]:
-        print("\n=== Paired block-bootstrap 95% CIs (alignment vs baseline) ===")
+        logger.info("\n=== Paired block-bootstrap 95%% CIs (alignment vs baseline) ===")
         for name, ci in report["cis"].items():
-            print(f"  {name:14s} sharpe_diff={ci['sharpe_diff']!s}  return_diff={ci['return_diff']!s}")
+            logger.info("  %-14s sharpe_diff=%s  return_diff=%s", name, ci["sharpe_diff"], ci["return_diff"])
 
 
 def main(config_path, use_fixture, n_draws, cost_bps, methods, band_only):
     """Entry point shared by the CLI."""
-    from src.data import align_to_common_days, get_prices, load_fixture, time_split, to_returns
+    from genomefolio.data import (
+        align_to_common_days,
+        get_prices,
+        load_fixture,
+        time_split,
+        to_returns,
+    )
 
     cfg = load_config(config_path)
     prices = load_fixture(cfg) if use_fixture else get_prices(cfg)
     returns = align_to_common_days(to_returns(prices))
     tune, report = time_split(returns, cfg.split.tune_fraction, enabled=cfg.split.enabled and not use_fixture)
     target = report if len(report) else returns
-    print(f"Universe: {len(returns.columns)} stocks | days={len(returns)} | train={cfg.window.train_days} "
-          f"| tune={len(tune)} report={len(target)} | draws={n_draws}")
+    logger.info(
+        "Universe: %d stocks | days=%d | train=%d | tune=%d report=%d | draws=%d",
+        len(returns.columns), len(returns), cfg.window.train_days, len(tune), len(target), n_draws,
+    )
 
     sweep = band_sweep_report(target, cfg)
-    print("\n=== Band-sweep stability (w -> n_clusters, silhouette) ===")
+    logger.info("\n=== Band-sweep stability (w -> n_clusters, silhouette) ===")
     for b in sorted(sweep["n_clusters"]):
-        print(f"  w={b:2d}: k={sweep['n_clusters'][b]}  silhouette={sweep['silhouette'][b]:.3f}")
-    print("ARI across bands:\n" + sweep["ari"].round(3).to_string())
+        logger.info("  w=%2d: k=%d  silhouette=%.3f", b, sweep["n_clusters"][b], sweep["silhouette"][b])
+    logger.info("ARI across bands:\n%s", sweep["ari"].round(3).to_string())
     if band_only:
         return
 
@@ -410,38 +494,19 @@ def main(config_path, use_fixture, n_draws, cost_bps, methods, band_only):
     _print_report(report_out, cfg)
 
     gate = report_out["results"]["alignment"]
-    print(f"\nAlignment gate pass fraction: {gate.gate_pass_fraction:.3f} "
-          f"(~0.05 expected by chance at the {cfg.null_test.gate_percentile:.0f}th percentile)")
+    logger.info(
+        "\nAlignment gate pass fraction: %.3f (chance ~%.2f at the %.0fth percentile)",
+        gate.gate_pass_fraction, 0.05, cfg.null_test.gate_percentile,
+    )
 
-    print("\n=== Transaction-cost sweep (alignment) ===")
+    logger.info("\n=== Transaction-cost sweep (alignment) ===")
     align_res = report_out["results"]["alignment"]
     for bps in cfg.costs.sweep_bps:
         m = performance_metrics(align_res.net_returns(bps))
-        print(f"  {bps:5.1f} bps: ann_return={m['ann_return']:+.4f}  sharpe={m['sharpe']:+.3f}")
+        logger.info("  %5.1f bps: ann_return=%+.4f  sharpe=%+.3f", bps, m["ann_return"], m["sharpe"])
 
 
 if __name__ == "__main__":  # pragma: no cover
-    import click
+    from genomefolio.cli import cli
 
-    @click.command()
-    @click.option("--config", "config_path", default=None, help="Path to params.yaml")
-    @click.option("--use-fixture", is_flag=True, help="Use the committed offline sample")
-    @click.option("--draws", "n_draws", default=None, type=int, help="Null-gate draws")
-    @click.option("--cost-bps", default=None, type=float, help="Override transaction cost (bps)")
-    @click.option(
-        "--methods",
-        default="alignment,equal_weight,min_variance,mean_variance,correlation,random,sector",
-    )
-    @click.option("--band-only", is_flag=True, help="Only print the band-sweep stability")
-    def _cli(config_path, use_fixture, n_draws, cost_bps, methods, band_only):
-        cfg = load_config(config_path)
-        main(
-            config_path,
-            use_fixture,
-            n_draws if n_draws is not None else cfg.null_test.n_draws_report,
-            cost_bps,
-            tuple(m.strip() for m in methods.split(",") if m.strip()),
-            band_only,
-        )
-
-    _cli()
+    cli()

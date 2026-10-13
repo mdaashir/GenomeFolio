@@ -1,0 +1,34 @@
+{
+  "name": "smoke",
+  "universe": "alt",
+  "universe_spec": {
+    "tickers": [
+      "ORCL",
+      "ADBE",
+      "CRM",
+      "QCOM",
+      "TXN",
+      "IBM",
+      "ABT",
+      "BMY",
+      "LLY",
+      "TGT",
+      "LOW",
+      "SBUX"
+    ],
+    "start": "2019-01-01",
+    "end": "2024-01-01",
+    "cache_dir": "data/cache_alt",
+    "fixture": "data/sample/prices_alt.csv"
+  },
+  "arms": [
+    "pooled_mnl",
+    "per_stock"
+  ],
+  "reference": "equal_weight",
+  "primary": "pooled_mnl",
+  "comparison": "higher_sharpe",
+  "n_trials": 2,
+  "params_sha256_8": "4b42306d",
+  "git_commit": "b0eb3ec4adb29a79786420d9c7b696168fbf300e"
+}

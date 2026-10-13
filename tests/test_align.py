@@ -4,13 +4,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.align import (
+from genomefolio.align import (
     distance_matrix,
     global_score,
     local_score,
     substitution_matrix,
 )
-from src.config import load_config
+from genomefolio.config import load_config
 
 CFG = load_config().align
 
@@ -52,8 +52,9 @@ def test_numba_matches_pure_python():
     py_cfg = replace(CFG, use_numba=False)
     rng = np.random.default_rng(1)
     for _ in range(8):
-        a = rng.integers(0, 5, size=rng.integers(3, 20)).astype(np.int64)
-        b = rng.integers(0, 5, size=rng.integers(3, 20)).astype(np.int64)
+        size = int(rng.integers(3, 20))
+        a = rng.integers(0, 5, size=size).astype(np.int64)
+        b = rng.integers(0, 5, size=size).astype(np.int64)
         assert global_score(a, b, S, CFG) == pytest.approx(global_score(a, b, S, py_cfg))
 
 
@@ -71,6 +72,12 @@ def test_local_score_non_negative():
     assert local_score(a, b, S, CFG) >= 0.0
 
 
+def test_band_smaller_than_length_gap_raises():
+    S = substitution_matrix(2.0)
+    with pytest.raises(ValueError, match="cannot reach the end cell"):
+        global_score(_arr([4, 4, 4]), _arr([4]), S, CFG, band=0)
+
+
 def _symbols(n_stocks=6, length=60, seed=0):
     rng = np.random.default_rng(seed)
     data = rng.integers(0, 5, size=(length, n_stocks))
@@ -85,3 +92,18 @@ def test_distance_matrix_symmetric_non_negative_zero_diagonal():
     assert np.allclose(A, A.T)
     assert (A >= -1e-12).all()
     assert np.allclose(np.diag(A), 0.0)
+
+
+def test_distance_matrix_numba_matches_python():
+    sym = _symbols(n_stocks=7, length=40, seed=3)
+    D_num = distance_matrix(sym, CFG)  # numba path
+    D_py = distance_matrix(sym, replace(CFG, use_numba=False))  # pure-python path
+    assert np.allclose(D_num.to_numpy(), D_py.to_numpy(), atol=1e-12)
+
+
+def test_distance_matrix_numba_matches_python_across_bands():
+    sym = _symbols(n_stocks=6, length=30, seed=5)
+    for band in (1, 2, 5, 15):
+        D_num = distance_matrix(sym, CFG, band=band)
+        D_py = distance_matrix(sym, replace(CFG, use_numba=False), band=band)
+        assert np.allclose(D_num.to_numpy(), D_py.to_numpy(), atol=1e-12)

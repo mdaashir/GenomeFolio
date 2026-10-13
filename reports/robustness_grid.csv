@@ -1,0 +1,10 @@
+,ann_return,ann_vol,sharpe,max_drawdown,dsr
+band2_equal_equal,0.080366,0.130058,0.659477,-0.163214,0.32293
+band2_risk_parity_inverse_vol,0.076267,0.122227,0.662518,-0.157471,0.324534
+band2_risk_parity_lw_inverse_vol_lw,0.07682,0.122963,0.663473,-0.15784,0.325102
+band5_equal_equal,0.035671,0.133198,0.329812,-0.178978,0.161544
+band5_risk_parity_inverse_vol,0.046043,0.125847,0.420679,-0.172988,0.199742
+band5_risk_parity_lw_inverse_vol_lw,0.044754,0.126387,0.409664,-0.173361,0.194836
+band10_equal_equal,0.059379,0.130847,0.506341,-0.144473,0.240368
+band10_risk_parity_inverse_vol,0.065629,0.122808,0.579062,-0.136319,0.277906
+band10_risk_parity_lw_inverse_vol_lw,0.065554,0.123429,0.5762,-0.136838,0.276383

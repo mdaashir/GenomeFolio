@@ -25,14 +25,21 @@ uv sync
 
 ```
 # Full dataset (downloads/caches prices on first run)
-uv run python -m src.backtest
+uv run genomefolio
 
 # Offline smoke run on the committed 10-stock fixture
-uv run python -m src.backtest --use-fixture --draws 30
+uv run genomefolio --use-fixture --draws 30
 
 # Only the band-sweep stability report
-uv run python -m src.backtest --use-fixture --band-only
+uv run genomefolio --use-fixture --band-only
 ```
+
+Equivalent to `uv run python -m genomefolio.backtest ...`.
+
+## Docs
+
+Method, configuration reference and results: see `docs/` (build with `mkdocs serve`) and the
+full report set in `reports/`.
 
 ## Tests
 
@@ -44,7 +51,7 @@ uv run pytest
 
 ```
 config/    params.yaml, sectors.yaml (all knobs; nothing hardcoded)
-src/       data, symbolize, align, cluster, null_test, forecast, portfolio, rolling, backtest
+genomefolio/       data, symbolize, align, cluster, null_test, forecast, portfolio, rolling, backtest
 tests/     pytest suite per module
 notebooks/ exploration only
 data/      gitignored raw/cache; data/sample/ is the committed offline fixture

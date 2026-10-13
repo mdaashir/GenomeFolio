@@ -20,14 +20,20 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.align import distance_matrix
-from src.backtest import paired_block_bootstrap, performance_metrics
-from src.cluster import select_constrained_k
-from src.config import load_config
-from src.data import align_to_common_days, get_prices, to_returns
-from src.portfolio import equal_weights, two_stage_weights
-from src.rolling import walk_forward_windows
-from src.symbolize import symbolize
+from genomefolio.align import distance_matrix
+from genomefolio.backtest import (
+    paired_block_bootstrap,
+    performance_metrics,
+    politis_white_block_length,
+    seed_for,
+)
+from genomefolio.cluster import select_constrained_k
+from genomefolio.config import load_config
+from genomefolio.data import align_to_common_days, get_prices, to_returns
+from genomefolio.portfolio import equal_weights, two_stage_weights
+from genomefolio.reporting import save_series, write_run_meta
+from genomefolio.rolling import walk_forward_windows
+from genomefolio.symbolize import symbolize
 
 REPORTS = Path("reports")
 REPORTS.mkdir(exist_ok=True)
@@ -102,12 +108,12 @@ def main() -> None:
     for name, m in table.items():
         log(f"{name}: sharpe={m['sharpe']:.3f} ann_return={m['ann_return']:.4f} vol={m['ann_vol']:.3f}")
 
-    rng = np.random.default_rng(base.seed + 999)
     ci = {
         name: paired_block_bootstrap(
             daily[name], daily["equal_weight"],
             base.bootstrap.n_resamples, base.bootstrap.block_length,
-            base.bootstrap.confidence, rng, base.bootstrap.use_politis_white,
+            base.bootstrap.confidence, np.random.default_rng(seed_for(name, base.seed)),
+            base.bootstrap.use_politis_white,
         )
         for name in ("per_stock", "pooled_mnl")
     }
@@ -121,7 +127,22 @@ def main() -> None:
     else:
         verdict = "H1 NOT SUPPORTED (CI includes 0)"
     log(verdict)
-    log("wrote holdout_eval.csv, holdout_ci.csv")
+
+    # Robustness: same bootstrap with the Politis-White automatic block length.
+    ci_pw = {
+        name: paired_block_bootstrap(
+            daily[name], daily["equal_weight"],
+            base.bootstrap.n_resamples, base.bootstrap.block_length,
+            base.bootstrap.confidence, np.random.default_rng(seed_for(name + "_pw", base.seed)), True,
+        )
+        for name in ("per_stock", "pooled_mnl")
+    }
+    pd.DataFrame(ci_pw).T.to_csv(REPORTS / "holdout_ci_pw.csv")
+    log(f"PW block length={politis_white_block_length(daily['pooled_mnl'].to_numpy())} "
+        f"-> pooled_mnl sharpe diff {ci_pw['pooled_mnl']['sharpe_diff']}")
+    save_series(daily, REPORTS / "holdout_daily.csv")
+    write_run_meta(REPORTS / "holdout_meta.json", cfg, {"universe": "holdout", "rebalances": len(windows)})
+    log("wrote holdout_eval.csv, holdout_ci.csv, holdout_ci_pw.csv, holdout_daily.csv, holdout_meta.json")
 
 
 if __name__ == "__main__":
