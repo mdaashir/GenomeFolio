@@ -94,6 +94,23 @@ def test_optimised_weights_respect_cap_and_sum():
     assert (w <= cap + 1e-6).all()
 
 
+def test_mean_shrink_only_affects_mean_variance():
+    idx = pd.date_range("2020-01-01", periods=252, freq="B")
+    rng = np.random.default_rng(0)
+    X = rng.normal(0.0, 0.01, (252, 4))
+    X[:, 0] += 0.002  # a stock with a strong positive mean
+    win = pd.DataFrame(X, index=idx, columns=list("abcd"))
+    cap = CFG.portfolio.cap(4)
+    # minimum-variance ignores means, so shrinkage must not change it
+    mv0 = optimised_weights(win, cap, risk_aversion=0.0, mean_shrink=0.0)
+    mv1 = optimised_weights(win, cap, risk_aversion=0.0, mean_shrink=0.9)
+    assert np.allclose(mv0.to_numpy(), mv1.to_numpy())
+    # mean-variance tilts toward the high-mean stock; shrinking tempers it
+    full = optimised_weights(win, cap, risk_aversion=5.0, mean_shrink=0.0)
+    shrunk = optimised_weights(win, cap, risk_aversion=5.0, mean_shrink=0.99)
+    assert full["a"] >= shrunk["a"] - 1e-9
+
+
 def test_random_clusters_sizes_match():
     cl = random_clusters([3, 5], list("abcdefgh"), np.random.default_rng(0))
     assert sorted(len(v) for v in cl.values()) == [3, 5]

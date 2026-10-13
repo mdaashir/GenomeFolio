@@ -64,6 +64,8 @@ portfolio:
   cap_floor: 0.10             # cap = max(cap_floor, cap_factor / N)
   cap_factor: 1.5
   forecast_tilt_strength: 0.25
+  mv_risk_aversion: 0.5       # mean-variance risk aversion (0 = minimum variance)
+  mean_shrink: 0.5            # shrink historical means toward zero (0 = no shrink)
 
 costs:
   base_bps: 10.0

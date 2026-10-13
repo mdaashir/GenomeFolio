@@ -28,6 +28,12 @@ def test_cap_formula():
     assert cfg.portfolio.cap(8) == pytest.approx(0.1875)
 
 
+def test_portfolio_optimiser_params_present_and_valid():
+    p = load_config().portfolio
+    assert p.mv_risk_aversion >= 0
+    assert 0.0 <= p.mean_shrink < 1.0
+
+
 def test_sector_groups_obey_size_rules():
     sectors = load_sectors()
     assert 3 <= len(sectors) <= 6
@@ -103,6 +109,8 @@ def test_quantile_scope_default_and_validation(tmp_path):
         lambda d: d["portfolio"].__setitem__("cap_floor", 0.0),
         lambda d: d["portfolio"].__setitem__("cap_factor", 0.0),
         lambda d: d["portfolio"].__setitem__("forecast_tilt_strength", -1.0),
+        lambda d: d["portfolio"].__setitem__("mv_risk_aversion", -1.0),
+        lambda d: d["portfolio"].__setitem__("mean_shrink", 1.5),
         lambda d: d["forecast"].__setitem__("model", "bogus"),
         lambda d: d["cluster"].__setitem__("linkage", "bogus"),
         lambda d: d["universe"].__setitem__("tickers", ["AAPL", "AAPL"]),

@@ -141,12 +141,13 @@ def optimised_weights(
     returns_window: pd.DataFrame,
     cap: float,
     risk_aversion: float = 0.0,
-    shrink_means: bool = False,
+    mean_shrink: float = 0.0,
 ) -> pd.Series:
     """Long-only, capped, sum-to-1 optimiser with Ledoit-Wolf covariance.
 
-    ``risk_aversion == 0`` gives the **minimum-variance** portfolio; ``> 0`` with
-    ``shrink_means`` gives the mean-variance variant using shrunk historical means.
+    ``risk_aversion == 0`` gives the **minimum-variance** portfolio; ``> 0`` gives the
+    mean-variance variant, with ``mean_shrink`` shrinking historical means toward zero
+    (``0`` = no shrinkage) to tame estimation error.
     """
     from sklearn.covariance import LedoitWolf
 
@@ -155,8 +156,8 @@ def optimised_weights(
     X = returns_window.to_numpy(dtype=float)
     cov = LedoitWolf().fit(X).covariance_
     mu = X.mean(axis=0)
-    if shrink_means:
-        mu = mu * 0.5  # shrink toward the grand mean (0 for demeaned-ish returns)
+    if mean_shrink > 0.0:
+        mu = mu * (1.0 - mean_shrink)
 
     def objective(w):
         return float(w @ cov @ w - risk_aversion * (w @ mu))

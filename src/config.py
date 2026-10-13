@@ -108,6 +108,8 @@ class PortfolioConfig:
     cap_floor: float
     cap_factor: float
     forecast_tilt_strength: float
+    mv_risk_aversion: float = 0.5
+    mean_shrink: float = 0.5
 
     def cap(self, n: int) -> float:
         """Per-stock weight cap ``max(cap_floor, cap_factor / n)``.
@@ -240,6 +242,8 @@ def load_config(path: str | Path | None = None) -> Config:
             cap_floor=float(po["cap_floor"]),
             cap_factor=float(po["cap_factor"]),
             forecast_tilt_strength=float(po["forecast_tilt_strength"]),
+            mv_risk_aversion=float(po.get("mv_risk_aversion", 0.5)),
+            mean_shrink=float(po.get("mean_shrink", 0.5)),
         ),
         costs=CostsConfig(
             base_bps=float(co["base_bps"]),
@@ -323,6 +327,10 @@ def _validate(cfg: Config) -> None:
         raise ValueError("portfolio.cap_factor must be > 0")
     if cfg.portfolio.forecast_tilt_strength < 0:
         raise ValueError("portfolio.forecast_tilt_strength must be >= 0")
+    if cfg.portfolio.mv_risk_aversion < 0:
+        raise ValueError("portfolio.mv_risk_aversion must be >= 0")
+    if not (0.0 <= cfg.portfolio.mean_shrink < 1.0):
+        raise ValueError("portfolio.mean_shrink must be inside [0, 1)")
     if cfg.forecast.model not in {"arima", "spline"}:
         raise ValueError("forecast.model must be arima|spline")
 

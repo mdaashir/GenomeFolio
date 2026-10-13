@@ -278,9 +278,12 @@ def run_backtest(
         elif method == "equal_weight":
             w = equal_weights(tickers)
         elif method in {"min_variance", "mean_variance"}:
+            is_mv = method == "mean_variance"
             w = optimised_weights(
-                window, cap, risk_aversion=0.5 if method == "mean_variance" else 0.0,
-                shrink_means=(method == "mean_variance"),
+                window,
+                cap,
+                risk_aversion=cfg.portfolio.mv_risk_aversion if is_mv else 0.0,
+                mean_shrink=cfg.portfolio.mean_shrink if is_mv else 0.0,
             )
         elif method == "correlation":
             clusters = correlation_clusters(window, cfg.cluster)
