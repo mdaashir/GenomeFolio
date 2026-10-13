@@ -3,6 +3,8 @@
 Sequence-alignment clustering of financial return patterns → diversified, walk-forward
 portfolio with a bias-aware backtest.
 
+**Consolidated report: `reports/REPORT.md`.**
+
 ## Pipeline status
 
 | Stage | Module | Status |
@@ -161,6 +163,11 @@ result in `reports/HOLDOUT.md`.
 
 ## Next steps
 
-1. Optional: increase power (more stocks, longer history, international universes) to test
-   whether the small consistent edge is real.
-2. Optional: replace the crude Politis-White rule with the full automatic selection.
+1. Increase power (more stocks, longer history, international universes) to test whether
+   the small consistent edge is real.
+2. Reduce the specification search: freeze one symbolization + allocator and evaluate only
+   on fresh universes/periods — the pre-registration template is in `reports/`.
+
+**Done:** full Politis–White automatic block-length selection (`politis_white_block_length`);
+sensitivity re-run closes nothing out — both OOS CIs still include 0 (block 42 → (-0.003, 0.140);
+block 52 → (-0.061, 0.102)). See `reports/REPORT.md` §4.
