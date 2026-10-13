@@ -96,19 +96,53 @@ def _ann_return(daily: np.ndarray) -> float:
     return float(np.prod(1.0 + daily) ** (PERIODS_PER_YEAR / len(daily)) - 1.0)
 
 
-def _politis_white_block_length(daily: np.ndarray) -> int:
-    """Crude automatic block length; falls back to sqrt(n) when undetermined."""
-    n = len(daily)
-    if n < 20:
-        return max(1, int(np.sqrt(n)))
-    # Simple rule-of-thumb using the first-order autocorrelation.
-    x = daily - daily.mean()
-    denom = float(x @ x)
-    rho = float(x[:-1] @ x[1:] / denom) if denom > 0 else 0.0
-    if abs(rho) < 1e-6:
-        return max(1, int(np.sqrt(n)))
-    candidate = int(np.ceil((2.0 * abs(rho) / (1.0 - abs(rho))) ** (2.0 / 3.0) * n ** (1.0 / 3.0)))
-    return int(np.clip(candidate, 1, n // 4 or 1))
+def _autocorrelations(x: np.ndarray, kmax: int) -> np.ndarray:
+    """Sample autocorrelations rho(1..kmax) of a demeaned series."""
+    xc = x - x.mean()
+    denom = float(xc @ xc)
+    if denom <= 0.0:
+        return np.zeros(kmax)
+    return np.array([float(xc[:-k] @ xc[k:]) / denom for k in range(1, kmax + 1)])
+
+
+def politis_white_block_length(x: np.ndarray, kind: str = "cb") -> int:
+    """Automatic block length, Politis & White (2004), for the (circular) block bootstrap.
+
+    Steps: (1) the largest lag ``m`` whose following ``K_n`` autocorrelations are all
+    insignificant at ``2 sqrt(log10(n)/n)``; (2) flatten with ``M = 2m``; (3) apply the
+    flat-top taper and the SB/CB variance constants. Falls back to ``sqrt(n)`` when the
+    series is too short, degenerate, or negatively autocorrelated.
+    """
+    x = np.asarray(x, dtype=float)
+    n = x.size
+    if n < 50:
+        return int(np.clip(round(np.sqrt(n)), 1, max(1, n)))
+    kn = int(min(n - 1, max(5, np.ceil(10.0 * np.log10(n)))))
+    kmax = int(min(n - 1, 3 * kn))
+    rho = _autocorrelations(x, kmax)
+
+    threshold = 2.0 * np.sqrt(np.log10(n) / n)
+    m_hat = kn
+    for i in range(1, kn + 1):
+        window = rho[i : min(i + kn, kmax)]
+        if window.size and np.all(np.abs(window) < threshold):
+            m_hat = i
+            break
+
+    M = int(min(2 * m_hat, kmax))
+    if M < 1:
+        return 1
+    k = np.arange(1, M + 1, dtype=float)
+    t = k / M
+    taper = np.where(t <= 0.5, 1.0, np.where(t <= 1.0, 2.0 * (1.0 - t), 0.0))
+    rk = rho[:M]
+    s = 1.0 + 2.0 * float(np.sum(taper * rk))  # symmetric sum over -M..M (k=0 term is 1)
+    g = 2.0 * float(np.sum(taper * k * rk))  # sum of |k| rho(k)
+    if g <= 0.0 or s == 0.0:
+        return int(np.clip(round(np.sqrt(n)), 1, n))
+    d = (2.0 if kind == "sb" else 4.0 / 3.0) * s * s
+    b = (2.0 * g * g / d) ** (1.0 / 3.0) * n ** (1.0 / 3.0)
+    return int(np.clip(round(b), 1, n))
 
 
 def paired_block_bootstrap(
@@ -133,7 +167,7 @@ def paired_block_bootstrap(
         nan = (np.nan, np.nan)
         return {"sharpe_method": nan, "sharpe_baseline": nan, "sharpe_diff": nan, "return_diff": nan}
 
-    L = _politis_white_block_length(m) if use_politis_white else block_length
+    L = politis_white_block_length(m) if use_politis_white else block_length
     L = int(np.clip(L, 1, n))
     n_blocks = int(np.ceil(n / L))
     starts_all = np.arange(0, n - L + 1)

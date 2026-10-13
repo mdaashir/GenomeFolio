@@ -8,6 +8,7 @@ from src.backtest import (
     metrics_table,
     paired_block_bootstrap,
     performance_metrics,
+    politis_white_block_length,
     run_backtest,
 )
 from src.config import load_config
@@ -77,3 +78,26 @@ def test_metrics_table_and_descriptive_view():
     assert "gate_pass_fraction" in table.columns
     desc = gate_passed_only_view(results, reference="alignment")
     assert set(desc.index) == set(table.index)
+
+
+def test_politis_white_block_length_in_range():
+    rng = np.random.default_rng(0)
+    b = politis_white_block_length(rng.normal(size=1000))
+    assert 1 <= b <= 1000
+
+
+def test_politis_white_grows_with_autocorrelation():
+    rng = np.random.default_rng(1)
+    n = 2000
+    white = rng.normal(size=n)
+    eps = rng.normal(size=n)
+    ar = np.zeros(n)
+    ar[0] = eps[0]
+    for t in range(1, n):
+        ar[t] = 0.8 * ar[t - 1] + eps[t]
+    assert politis_white_block_length(ar) > politis_white_block_length(white)
+
+
+def test_politis_white_short_and_degenerate_series():
+    assert 1 <= politis_white_block_length(np.array([0.01, -0.02, 0.03])) <= 3
+    assert 1 <= politis_white_block_length(np.zeros(500)) <= 500
