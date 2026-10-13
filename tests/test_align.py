@@ -92,3 +92,18 @@ def test_distance_matrix_symmetric_non_negative_zero_diagonal():
     assert np.allclose(A, A.T)
     assert (A >= -1e-12).all()
     assert np.allclose(np.diag(A), 0.0)
+
+
+def test_distance_matrix_numba_matches_python():
+    sym = _symbols(n_stocks=7, length=40, seed=3)
+    D_num = distance_matrix(sym, CFG)  # numba path
+    D_py = distance_matrix(sym, replace(CFG, use_numba=False))  # pure-python path
+    assert np.allclose(D_num.to_numpy(), D_py.to_numpy(), atol=1e-12)
+
+
+def test_distance_matrix_numba_matches_python_across_bands():
+    sym = _symbols(n_stocks=6, length=30, seed=5)
+    for band in (1, 2, 5, 15):
+        D_num = distance_matrix(sym, CFG, band=band)
+        D_py = distance_matrix(sym, replace(CFG, use_numba=False), band=band)
+        assert np.allclose(D_num.to_numpy(), D_py.to_numpy(), atol=1e-12)

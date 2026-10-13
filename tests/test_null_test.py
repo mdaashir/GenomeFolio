@@ -61,3 +61,13 @@ def test_gate_result_shapes_and_diagnostics():
     assert isinstance(res.passed, bool)
     assert np.isfinite(res.threshold)
     assert 0.0 <= res.fdr_significant_fraction <= 1.0
+
+
+def test_gate_is_deterministic_across_calls():
+    rng = np.random.default_rng(3)
+    sym = _frame(rng.integers(0, 5, size=(80, 10)))
+    a = evaluate_gate(sym, CFG.align, CFG.cluster, CFG.null_test, 20, np.random.default_rng(CFG.seed))
+    b = evaluate_gate(sym, CFG.align, CFG.cluster, CFG.null_test, 20, np.random.default_rng(CFG.seed))
+    assert np.allclose(a.null_silhouettes, b.null_silhouettes)
+    assert a.threshold == b.threshold
+    assert a.passed == b.passed
