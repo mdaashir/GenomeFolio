@@ -38,6 +38,7 @@ from genomefolio.cluster import select_constrained_k
 from genomefolio.config import load_config
 from genomefolio.data import align_to_common_days, get_prices, time_split, to_returns
 from genomefolio.portfolio import correlation_clusters, equal_weights, two_stage_weights
+from genomefolio.reporting import save_series, write_run_meta
 from genomefolio.rolling import walk_forward_windows
 from genomefolio.symbolize import symbolize
 
@@ -167,7 +168,10 @@ def main(period: str = "report") -> None:
         if name != "equal_weight"
     }
     pd.DataFrame(ci).T.to_csv(REPORTS / f"ablations_ci_{period}.csv")
-    log(f"wrote ablations_{period}.csv, ablations_ci_{period}.csv, ablations_stability_{period}.csv")
+    save_series(daily, REPORTS / f"ablations_daily_{period}.csv")
+    write_run_meta(REPORTS / f"ablations_meta_{period}.json", cfg, {"period": period})
+    log(f"wrote ablations_{period}.csv, ablations_ci_{period}.csv, ablations_stability_{period}.csv, "
+        f"ablations_daily_{period}.csv, ablations_meta_{period}.json")
 
 
 if __name__ == "__main__":

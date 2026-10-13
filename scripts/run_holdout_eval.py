@@ -31,6 +31,7 @@ from genomefolio.cluster import select_constrained_k
 from genomefolio.config import load_config
 from genomefolio.data import align_to_common_days, get_prices, to_returns
 from genomefolio.portfolio import equal_weights, two_stage_weights
+from genomefolio.reporting import save_series, write_run_meta
 from genomefolio.rolling import walk_forward_windows
 from genomefolio.symbolize import symbolize
 
@@ -139,7 +140,9 @@ def main() -> None:
     pd.DataFrame(ci_pw).T.to_csv(REPORTS / "holdout_ci_pw.csv")
     log(f"PW block length={politis_white_block_length(daily['pooled_mnl'].to_numpy())} "
         f"-> pooled_mnl sharpe diff {ci_pw['pooled_mnl']['sharpe_diff']}")
-    log("wrote holdout_eval.csv, holdout_ci.csv, holdout_ci_pw.csv")
+    save_series(daily, REPORTS / "holdout_daily.csv")
+    write_run_meta(REPORTS / "holdout_meta.json", cfg, {"universe": "holdout", "rebalances": len(windows)})
+    log("wrote holdout_eval.csv, holdout_ci.csv, holdout_ci_pw.csv, holdout_daily.csv, holdout_meta.json")
 
 
 if __name__ == "__main__":

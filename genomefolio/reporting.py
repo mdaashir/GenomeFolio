@@ -15,10 +15,10 @@ import json
 import platform
 import subprocess
 import sys
+from collections.abc import Mapping
 from dataclasses import asdict
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Mapping
 
 import pandas as pd
 

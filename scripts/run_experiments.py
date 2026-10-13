@@ -36,6 +36,7 @@ from genomefolio.data import align_to_common_days, get_prices, time_split, to_re
 from genomefolio.forecast import forecast_clusters
 from genomefolio.null_test import evaluate_gate
 from genomefolio.portfolio import correlation_clusters, equal_weights, two_stage_weights
+from genomefolio.reporting import save_series, write_run_meta
 from genomefolio.rolling import walk_forward_windows
 from genomefolio.symbolize import symbolize
 
@@ -158,7 +159,9 @@ def main(n_draws: int) -> None:
         if name != "equal_weight"
     }
     pd.DataFrame(ci).T.to_csv(REPORTS / "experiments_ci.csv")
-    log("wrote experiments.csv and experiments_ci.csv")
+    save_series(daily, REPORTS / "experiments_daily.csv")
+    write_run_meta(REPORTS / "experiments_meta.json", cfg, {"n_draws": n_draws})
+    log("wrote experiments.csv, experiments_ci.csv, experiments_daily.csv, experiments_meta.json")
 
 
 if __name__ == "__main__":

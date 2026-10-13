@@ -33,6 +33,7 @@ from genomefolio.backtest import (
 from genomefolio.config import load_config
 from genomefolio.data import align_to_common_days, get_prices, to_returns
 from genomefolio.portfolio import equal_weights
+from genomefolio.reporting import save_series, write_run_meta
 from genomefolio.rolling import walk_forward_windows
 
 REPORTS = Path("reports")
@@ -111,7 +112,9 @@ def main() -> None:
     pd.DataFrame(ci_pw).T.to_csv(REPORTS / "time_oos_ci_pw.csv")
     log(f"PW block length={politis_white_block_length(daily['pooled_mnl'].to_numpy())} "
         f"-> pooled_mnl sharpe diff {ci_pw['pooled_mnl']['sharpe_diff']}")
-    log("wrote time_oos_eval.csv, time_oos_ci.csv, time_oos_ci_pw.csv")
+    save_series(daily, REPORTS / "time_oos_daily.csv")
+    write_run_meta(REPORTS / "time_oos_meta.json", cfg, {"period": f"{START}..{END}", "rebalances": len(windows)})
+    log("wrote time_oos_eval.csv, time_oos_ci.csv, time_oos_ci_pw.csv, time_oos_daily.csv, time_oos_meta.json")
 
 
 if __name__ == "__main__":

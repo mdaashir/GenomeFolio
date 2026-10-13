@@ -33,6 +33,7 @@ from genomefolio.backtest import (
 )
 from genomefolio.config import load_config
 from genomefolio.data import align_to_common_days, get_prices, time_split, to_returns
+from genomefolio.reporting import save_series, write_run_meta
 
 REPORTS = Path("reports")
 REPORTS.mkdir(exist_ok=True)
@@ -96,6 +97,9 @@ def main(n_draws: int) -> None:
     log("wrote cost_sweep.csv")
 
     results["alignment"].turnover.to_frame("turnover").to_csv(REPORTS / "turnover.csv")
+    save_series({m: res.daily_returns for m, res in results.items()}, REPORTS / "daily_returns.csv")
+    write_run_meta(REPORTS / "run_meta.json", cfg, {"n_draws": n_draws, "methods": list(METHODS)})
+    log("wrote daily_returns.csv, run_meta.json")
     log("done")
 
 
