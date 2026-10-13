@@ -97,3 +97,25 @@ def test_pooled_scope_preserves_magnitude():
 def test_invalid_quantile_scope_raises():
     with pytest.raises(ValueError):
         symbolize(_returns(), CUTOFFS, quantile_scope="bogus")
+
+
+def test_symbolize_zscore_shape_range_and_warmup():
+    from genomefolio.symbolize import symbolize_zscore
+
+    r = _returns()
+    z = symbolize_zscore(r, window=60)
+    assert z.shape == r.shape
+    finite = z.to_numpy()[~np.isnan(z.to_numpy())]
+    assert finite.min() >= 0.0 and finite.max() <= 4.0
+    assert z.iloc[:5].isna().any().any()  # warm-up NaNs at the start
+
+
+def test_symbolize_zscore_has_no_look_ahead():
+    from genomefolio.symbolize import symbolize_zscore
+
+    r = _returns().iloc[-120:, :3]
+    a = symbolize_zscore(r, window=30)
+    r2 = r.copy()
+    r2.iloc[-1] = r2.iloc[-1] + 10.0  # change only the most recent return
+    b = symbolize_zscore(r2, window=30)
+    assert a.iloc[:-1].equals(b.iloc[:-1])

@@ -125,3 +125,21 @@ def test_invalid_config_values_rejected(tmp_path, mutate):
     path.write_text(yaml.safe_dump(data), encoding="utf-8")
     with pytest.raises(ValueError):
         load_config(path)
+
+
+def test_cutoff_count_allows_seven_symbols(tmp_path):
+    data = yaml.safe_load(open("config/params.yaml", encoding="utf-8"))
+    data["symbolize"]["cutoffs"] = [0.10, 0.25, 0.40, 0.60, 0.75, 0.90]
+    path = tmp_path / "seven.yaml"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    cfg = load_config(path)
+    assert len(cfg.symbolize.cutoffs) == 6
+
+
+def test_cutoff_count_rejects_other_lengths(tmp_path):
+    data = yaml.safe_load(open("config/params.yaml", encoding="utf-8"))
+    data["symbolize"]["cutoffs"] = [0.2, 0.5, 0.8]
+    path = tmp_path / "three.yaml"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_config(path)
