@@ -304,6 +304,13 @@ def run_backtest(
         elif method == "correlation":
             clusters = correlation_clusters(window, cfg.cluster)
             w = two_stage_weights(clusters, window, cfg.portfolio)
+        elif method == "dtw":
+            from genomefolio.cluster import select_constrained_k
+            from genomefolio.dtw import dtw_distance_matrix
+
+            D = dtw_distance_matrix(window, cfg.align.band)
+            clusters = select_constrained_k(D, cfg.cluster, cfg.cluster.linkage).clusters
+            w = two_stage_weights(clusters, window, cfg.portfolio)
         elif method == "sector":
             clusters = sector_clusters(sector_map, tickers)
             w = two_stage_weights(clusters, window, cfg.portfolio)

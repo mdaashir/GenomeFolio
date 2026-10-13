@@ -54,7 +54,7 @@ def test_run_backtest_alignment_gate_fraction_bounded():
 
 def test_all_methods_book_fully_invested():
     r = _returns()
-    for method in ("equal_weight", "correlation", "sector", "random"):
+    for method in ("equal_weight", "correlation", "sector", "random", "dtw"):
         res = run_backtest(r, CFG, method=method, n_draws=5, cost_bps=0.0)
         for date, w in res.weights.items():
             assert abs(float(w.sum()) - 1.0) < 1e-6, f"{method} under-invested on {date}"
