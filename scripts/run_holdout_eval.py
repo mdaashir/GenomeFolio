@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from src.align import distance_matrix
-from src.backtest import paired_block_bootstrap, performance_metrics
+from src.backtest import paired_block_bootstrap, performance_metrics, politis_white_block_length
 from src.cluster import select_constrained_k
 from src.config import load_config
 from src.data import align_to_common_days, get_prices, to_returns
@@ -121,7 +121,21 @@ def main() -> None:
     else:
         verdict = "H1 NOT SUPPORTED (CI includes 0)"
     log(verdict)
-    log("wrote holdout_eval.csv, holdout_ci.csv")
+
+    # Robustness: same bootstrap with the Politis-White automatic block length.
+    rng_pw = np.random.default_rng(base.seed + 1001)
+    ci_pw = {
+        name: paired_block_bootstrap(
+            daily[name], daily["equal_weight"],
+            base.bootstrap.n_resamples, base.bootstrap.block_length,
+            base.bootstrap.confidence, rng_pw, True,
+        )
+        for name in ("per_stock", "pooled_mnl")
+    }
+    pd.DataFrame(ci_pw).T.to_csv(REPORTS / "holdout_ci_pw.csv")
+    log(f"PW block length={politis_white_block_length(daily['pooled_mnl'].to_numpy())} "
+        f"-> pooled_mnl sharpe diff {ci_pw['pooled_mnl']['sharpe_diff']}")
+    log("wrote holdout_eval.csv, holdout_ci.csv, holdout_ci_pw.csv")
 
 
 if __name__ == "__main__":

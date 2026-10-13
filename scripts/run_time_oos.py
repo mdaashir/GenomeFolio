@@ -24,7 +24,11 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_holdout_eval as h  # noqa: E402  (shared arm builder)
 
-from src.backtest import paired_block_bootstrap, performance_metrics  # noqa: E402
+from src.backtest import (  # noqa: E402
+    paired_block_bootstrap,
+    performance_metrics,
+    politis_white_block_length,
+)
 from src.config import load_config  # noqa: E402
 from src.data import align_to_common_days, get_prices, to_returns  # noqa: E402
 from src.portfolio import equal_weights  # noqa: E402
@@ -93,7 +97,21 @@ def main() -> None:
     else:
         verdict = "H2 NOT SUPPORTED (CI includes 0)"
     log(verdict)
-    log("wrote time_oos_eval.csv, time_oos_ci.csv")
+
+    # Robustness: same bootstrap with the Politis-White automatic block length.
+    rng_pw = np.random.default_rng(base.seed + 1001)
+    ci_pw = {
+        name: paired_block_bootstrap(
+            daily[name], daily["equal_weight"],
+            base.bootstrap.n_resamples, base.bootstrap.block_length,
+            base.bootstrap.confidence, rng_pw, True,
+        )
+        for name in ("per_stock", "pooled_mnl")
+    }
+    pd.DataFrame(ci_pw).T.to_csv(REPORTS / "time_oos_ci_pw.csv")
+    log(f"PW block length={politis_white_block_length(daily['pooled_mnl'].to_numpy())} "
+        f"-> pooled_mnl sharpe diff {ci_pw['pooled_mnl']['sharpe_diff']}")
+    log("wrote time_oos_eval.csv, time_oos_ci.csv, time_oos_ci_pw.csv")
 
 
 if __name__ == "__main__":
