@@ -19,8 +19,6 @@ import pandas as pd
 
 from genomefolio.config import REPO_ROOT, Config
 
-_FIXTURE_TICKERS = ("AAPL", "MSFT", "INTC", "CSCO", "JPM", "JNJ", "PG", "XOM", "KO", "DIS")
-
 
 def _normalise_close(raw: pd.DataFrame, tickers: tuple[str, ...]) -> pd.DataFrame:
     """Return a dates x tickers adjusted-close frame from a yfinance download."""

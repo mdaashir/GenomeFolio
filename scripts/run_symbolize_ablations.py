@@ -66,7 +66,7 @@ VARIANTS = [
 ]
 
 
-def _portfolio(daily_parts, tickers):
+def _portfolio(daily_parts):
     daily = pd.concat(daily_parts).sort_index()
     return daily
 
@@ -93,7 +93,7 @@ def main(period: str = "report") -> None:
     labels_by_variant: dict[str, list[pd.Series]] = {}
 
     def evaluate(name, parts, labels, ks):
-        d = _portfolio(parts, tickers)
+        d = _portfolio(parts)
         daily[name] = d
         m = performance_metrics(d)
         m["avg_k"] = float(np.mean(ks)) if ks else np.nan

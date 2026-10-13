@@ -27,10 +27,6 @@ DEFAULT_SECTORS_PATH = REPO_ROOT / "config" / "sectors.yaml"
 _SCIPY_LINKAGES = {"single", "complete", "average", "weighted", "centroid", "median", "ward"}
 
 
-def _tuple(values: Any) -> tuple:
-    return tuple(values) if values is not None else ()
-
-
 @dataclass(frozen=True)
 class UniverseConfig:
     tickers: tuple[str, ...]

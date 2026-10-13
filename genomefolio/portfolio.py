@@ -18,20 +18,11 @@ Baselines (comparisons, not the engine):
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 
 from genomefolio.config import ClusterConfig, PortfolioConfig
-
-
-@dataclass
-class ClusterForecastTilt:
-    """Cumulative expected returns per cluster, used for the modest tilt."""
-
-    expected: dict[int, float]
 
 
 def cap_redistribute(weights, cap, max_iter: int = 200, tol: float = 1e-12) -> np.ndarray:
