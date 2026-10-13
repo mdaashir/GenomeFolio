@@ -17,6 +17,7 @@ use the window ending at ``t`` only.
 
 from __future__ import annotations
 
+import logging
 import zlib
 from dataclasses import dataclass, field
 
@@ -34,6 +35,8 @@ from genomefolio.portfolio import (
 )
 
 PERIODS_PER_YEAR = 252
+
+logger = logging.getLogger("genomefolio")
 
 
 def seed_for(label: str, base: int = 0) -> int:
@@ -432,15 +435,15 @@ def run_full_report(
 
 def _print_report(report: dict, cfg: Config) -> None:
     pd.set_option("display.width", 160)
-    print("\n=== Metrics (all methods, identical windows) ===")
-    print(report["table"].round(4).to_string())
+    logger.info("\n=== Metrics (all methods, identical windows) ===")
+    logger.info("\n%s", report["table"].round(4).to_string())
     if report.get("descriptive") is not None:
-        print("\n=== Alignment gate-passed-only (descriptive, no CI; baselines on same rebalances) ===")
-        print(report["descriptive"].round(4).to_string())
+        logger.info("\n=== Alignment gate-passed-only (descriptive, no CI; baselines on same rebalances) ===")
+        logger.info("\n%s", report["descriptive"].round(4).to_string())
     if report["cis"]:
-        print("\n=== Paired block-bootstrap 95% CIs (alignment vs baseline) ===")
+        logger.info("\n=== Paired block-bootstrap 95%% CIs (alignment vs baseline) ===")
         for name, ci in report["cis"].items():
-            print(f"  {name:14s} sharpe_diff={ci['sharpe_diff']!s}  return_diff={ci['return_diff']!s}")
+            logger.info("  %-14s sharpe_diff=%s  return_diff=%s", name, ci["sharpe_diff"], ci["return_diff"])
 
 
 def main(config_path, use_fixture, n_draws, cost_bps, methods, band_only):
@@ -458,14 +461,16 @@ def main(config_path, use_fixture, n_draws, cost_bps, methods, band_only):
     returns = align_to_common_days(to_returns(prices))
     tune, report = time_split(returns, cfg.split.tune_fraction, enabled=cfg.split.enabled and not use_fixture)
     target = report if len(report) else returns
-    print(f"Universe: {len(returns.columns)} stocks | days={len(returns)} | train={cfg.window.train_days} "
-          f"| tune={len(tune)} report={len(target)} | draws={n_draws}")
+    logger.info(
+        "Universe: %d stocks | days=%d | train=%d | tune=%d report=%d | draws=%d",
+        len(returns.columns), len(returns), cfg.window.train_days, len(tune), len(target), n_draws,
+    )
 
     sweep = band_sweep_report(target, cfg)
-    print("\n=== Band-sweep stability (w -> n_clusters, silhouette) ===")
+    logger.info("\n=== Band-sweep stability (w -> n_clusters, silhouette) ===")
     for b in sorted(sweep["n_clusters"]):
-        print(f"  w={b:2d}: k={sweep['n_clusters'][b]}  silhouette={sweep['silhouette'][b]:.3f}")
-    print("ARI across bands:\n" + sweep["ari"].round(3).to_string())
+        logger.info("  w=%2d: k=%d  silhouette=%.3f", b, sweep["n_clusters"][b], sweep["silhouette"][b])
+    logger.info("ARI across bands:\n%s", sweep["ari"].round(3).to_string())
     if band_only:
         return
 
@@ -473,14 +478,16 @@ def main(config_path, use_fixture, n_draws, cost_bps, methods, band_only):
     _print_report(report_out, cfg)
 
     gate = report_out["results"]["alignment"]
-    print(f"\nAlignment gate pass fraction: {gate.gate_pass_fraction:.3f} "
-          f"(~0.05 expected by chance at the {cfg.null_test.gate_percentile:.0f}th percentile)")
+    logger.info(
+        "\nAlignment gate pass fraction: %.3f (chance ~%.2f at the %.0fth percentile)",
+        gate.gate_pass_fraction, 0.05, cfg.null_test.gate_percentile,
+    )
 
-    print("\n=== Transaction-cost sweep (alignment) ===")
+    logger.info("\n=== Transaction-cost sweep (alignment) ===")
     align_res = report_out["results"]["alignment"]
     for bps in cfg.costs.sweep_bps:
         m = performance_metrics(align_res.net_returns(bps))
-        print(f"  {bps:5.1f} bps: ann_return={m['ann_return']:+.4f}  sharpe={m['sharpe']:+.3f}")
+        logger.info("  %5.1f bps: ann_return=%+.4f  sharpe=%+.3f", bps, m["ann_return"], m["sharpe"])
 
 
 if __name__ == "__main__":  # pragma: no cover

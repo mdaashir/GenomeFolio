@@ -5,6 +5,9 @@ Thin wrapper over :func:`genomefolio.backtest.main`.
 
 from __future__ import annotations
 
+import logging
+import sys
+
 import click
 
 from genomefolio.backtest import main
@@ -20,8 +23,14 @@ _METHODS = "alignment,equal_weight,min_variance,mean_variance,correlation,random
 @click.option("--cost-bps", default=None, type=float, help="Override transaction cost (bps)")
 @click.option("--methods", default=_METHODS, help="Comma-separated methods to compare")
 @click.option("--band-only", is_flag=True, help="Only print the band-sweep stability")
-def cli(config_path, use_fixture, n_draws, cost_bps, methods, band_only):
+@click.option("--verbose", is_flag=True, help="Debug-level logging")
+def cli(config_path, use_fixture, n_draws, cost_bps, methods, band_only, verbose):
     """Run the GenomeFolio walk-forward backtest."""
+    logging.basicConfig(
+        stream=sys.stdout,
+        level=logging.DEBUG if verbose else logging.INFO,
+        format="%(message)s",
+    )
     cfg = load_config(config_path)
     main(
         config_path,
