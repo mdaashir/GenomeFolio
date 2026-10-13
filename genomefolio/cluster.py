@@ -118,3 +118,24 @@ def stability_ari(results: dict[int, ClusteringResult]) -> pd.DataFrame:
             lj = results[bj].labels.to_numpy()
             M[i, j] = adjusted_rand_score(li, lj)
     return pd.DataFrame(M, index=bands, columns=bands)
+
+
+def consensus_distance(symbols: pd.DataFrame, align_cfg: AlignConfig, bands) -> pd.DataFrame:
+    """Median alignment distance across several band widths.
+
+    Addresses the band-sensitivity weakness (a single band is an arbitrary choice): the
+    element-wise median over ``bands`` is a more robust similarity to cluster on.
+    """
+    from genomefolio.align import distance_matrix
+
+    mats = [distance_matrix(symbols, align_cfg, band=int(w)).to_numpy() for w in bands]
+    med = np.median(np.stack(mats), axis=0)
+    cols = list(symbols.columns)
+    return pd.DataFrame(med, index=cols, columns=cols)
+
+
+def consensus_clustering(
+    symbols: pd.DataFrame, align_cfg: AlignConfig, cluster_cfg: ClusterConfig, bands
+) -> ClusteringResult:
+    """Constrained-k clustering on the band-consensus distance."""
+    return select_constrained_k(consensus_distance(symbols, align_cfg, bands), cluster_cfg, cluster_cfg.linkage)
