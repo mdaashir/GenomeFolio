@@ -180,8 +180,17 @@ def _sw_py(a, b, S, gap_open, gap_extend):
 
 
 def global_score(a: np.ndarray, b: np.ndarray, S: np.ndarray, cfg: AlignConfig, band: int | None = None) -> float:
-    """Banded global (Needleman-Wunsch) alignment score."""
+    """Banded global (Needleman-Wunsch) alignment score.
+
+    The band must be at least ``|len(a) - len(b)|`` or the end cell is unreachable and
+    the DP would silently return a sentinel; that is rejected explicitly.
+    """
     band = cfg.band if band is None else band
+    if band < abs(len(a) - len(b)):
+        raise ValueError(
+            f"band ({band}) < |len(a)-len(b)| ({abs(len(a) - len(b))}): "
+            "alignment cannot reach the end cell"
+        )
     a = np.ascontiguousarray(a, dtype=np.int64)
     b = np.ascontiguousarray(b, dtype=np.int64)
     if _HAVE_NUMBA and cfg.use_numba:

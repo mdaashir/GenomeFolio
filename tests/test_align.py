@@ -52,8 +52,9 @@ def test_numba_matches_pure_python():
     py_cfg = replace(CFG, use_numba=False)
     rng = np.random.default_rng(1)
     for _ in range(8):
-        a = rng.integers(0, 5, size=rng.integers(3, 20)).astype(np.int64)
-        b = rng.integers(0, 5, size=rng.integers(3, 20)).astype(np.int64)
+        size = int(rng.integers(3, 20))
+        a = rng.integers(0, 5, size=size).astype(np.int64)
+        b = rng.integers(0, 5, size=size).astype(np.int64)
         assert global_score(a, b, S, CFG) == pytest.approx(global_score(a, b, S, py_cfg))
 
 
@@ -69,6 +70,12 @@ def test_local_score_non_negative():
     a = _arr([0, 0, 0])
     b = _arr([4, 4, 4])
     assert local_score(a, b, S, CFG) >= 0.0
+
+
+def test_band_smaller_than_length_gap_raises():
+    S = substitution_matrix(2.0)
+    with pytest.raises(ValueError, match="cannot reach the end cell"):
+        global_score(_arr([4, 4, 4]), _arr([4]), S, CFG, band=0)
 
 
 def _symbols(n_stocks=6, length=60, seed=0):
