@@ -67,6 +67,35 @@ def test_sector_method_uncovered_universe_raises():
         run_backtest(r, CFG, method="sector", n_draws=5)
 
 
+def test_no_look_ahead_future_perturbation():
+    r = _returns(days=400)
+    res1 = run_backtest(r, CFG, method="alignment", n_draws=5)
+    dates = list(res1.weights)
+    first = dates[0]
+
+    r2 = r.copy()
+    pos = r.index.get_loc(first)
+    r2.iloc[pos:] = -r2.iloc[pos:]  # flip every future return (changes the pattern)
+
+    res2 = run_backtest(r2, CFG, method="alignment", n_draws=5)
+    # the first rebalance saw only data before `first`, so its weights must be identical
+    assert np.allclose(res1.weights[first].to_numpy(), res2.weights[first].to_numpy())
+    # later rebalances do see the perturbed data, so at least one must differ
+    assert any(
+        not np.allclose(res1.weights[d].to_numpy(), res2.weights[d].to_numpy()) for d in dates[1:]
+    )
+
+
+def test_run_backtest_is_reproducible():
+    r = _returns()
+    a = run_backtest(r, CFG, method="alignment", n_draws=5)
+    b = run_backtest(r, CFG, method="alignment", n_draws=5)
+    assert a.daily_returns.equals(b.daily_returns)
+    assert a.turnover.equals(b.turnover)
+    for d in a.weights:
+        assert a.weights[d].equals(b.weights[d])
+
+
 def test_cost_reduces_return():
     free = run_backtest(_returns(), CFG, method="equal_weight", cost_bps=0.0)
     costly = run_backtest(_returns(), CFG, method="equal_weight", cost_bps=25.0)
