@@ -1,8 +1,8 @@
-[16:13:07] holdout tickers=20 days=3019 rebalances=131
-[16:13:19] per_stock: sharpe=1.065 ann_return=0.1909 vol=0.179
-[16:13:19] pooled_mnl: sharpe=1.059 ann_return=0.2056 vol=0.195
-[16:13:19] equal_weight: sharpe=1.039 ann_return=0.1969 vol=0.191
-[16:13:23] pooled_mnl sharpe diff vs equal_weight: (-0.06441276279189272, 0.1073505037056495)
-[16:13:23] H1 NOT SUPPORTED (CI includes 0)
-[16:13:26] PW block length=52 -> pooled_mnl sharpe diff (-0.06144186096606277, 0.10192366295077493)
-[16:13:26] wrote holdout_eval.csv, holdout_ci.csv, holdout_ci_pw.csv
+[21:24:08] holdout tickers=20 days=3019 rebalances=131
+[21:24:17] per_stock: sharpe=1.065 ann_return=0.1909 vol=0.179
+[21:24:17] pooled_mnl: sharpe=1.059 ann_return=0.2056 vol=0.195
+[21:24:17] equal_weight: sharpe=1.039 ann_return=0.1969 vol=0.191
+[21:24:21] pooled_mnl sharpe diff vs equal_weight: (-0.06487583972107198, 0.10480966185764647)
+[21:24:21] H1 NOT SUPPORTED (CI includes 0)
+[21:24:23] PW block length=52 -> pooled_mnl sharpe diff (-0.057786330329103096, 0.1028858644675139)
+[21:24:23] wrote holdout_eval.csv, holdout_ci.csv, holdout_ci_pw.csv, holdout_daily.csv, holdout_meta.json

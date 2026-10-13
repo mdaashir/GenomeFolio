@@ -1,0 +1,21 @@
+[21:21:52] period=report days=906 tickers=20 rebalances=31
+[21:21:56] per_stock_20_40_60_80: sharpe=0.421 ann_return=0.0460 avg_k=2.81
+[21:21:59] per_stock_15_35_65_85: sharpe=0.632 ann_return=0.0728 avg_k=3.55
+[21:22:03] per_stock_20_40_60_80_mnl: sharpe=0.869 ann_return=0.1104 avg_k=2.81
+[21:22:06] pooled_20_40_60_80: sharpe=0.669 ann_return=0.0764 avg_k=2.00
+[21:22:10] pooled_15_35_65_85: sharpe=0.599 ann_return=0.0725 avg_k=2.42
+[21:22:13] pooled_20_40_60_80_mnl: sharpe=0.776 ann_return=0.0965 avg_k=2.26
+[21:22:14] correlation_ref: sharpe=0.530 ann_return=0.0615 avg_k=3.00
+[21:22:14] equal_weight: sharpe=0.746 ann_return=0.0944 avg_k=nan
+[21:22:15] mean ARI vs baseline: {'per_stock_20_40_60_80': 1.0, 'per_stock_15_35_65_85': 0.42758219519034146, 'per_stock_20_40_60_80_mnl': 0.17308260711726373, 'pooled_20_40_60_80': 0.10262212944203424, 'pooled_15_35_65_85': 0.10305378334312032, 'pooled_20_40_60_80_mnl': 0.19059169664475173, 'correlation_ref': 0.2799267739521356}
+[21:22:29] wrote ablations_report.csv, ablations_ci_report.csv, ablations_stability_report.csv, ablations_daily_report.csv, ablations_meta_report.json
+[21:22:38] period=tune days=2113 tickers=20 rebalances=88
+[21:22:46] per_stock_20_40_60_80: sharpe=0.863 ann_return=0.1325 avg_k=3.03
+[21:22:56] per_stock_15_35_65_85: sharpe=0.870 ann_return=0.1323 avg_k=3.12
+[21:23:06] per_stock_20_40_60_80_mnl: sharpe=0.904 ann_return=0.1432 avg_k=2.89
+[21:23:16] pooled_20_40_60_80: sharpe=0.882 ann_return=0.1370 avg_k=2.52
+[21:23:23] pooled_15_35_65_85: sharpe=0.981 ann_return=0.1607 avg_k=2.22
+[21:23:30] pooled_20_40_60_80_mnl: sharpe=0.967 ann_return=0.1564 avg_k=2.66
+[21:23:33] correlation_ref: sharpe=0.931 ann_return=0.1435 avg_k=3.02
+[21:23:34] equal_weight: sharpe=0.946 ann_return=0.1536 avg_k=nan
+[21:23:36] mean ARI vs baseline: {'per_stock_20_40_60_80': 1.0, 'per_stock_15_35_65_85': 0.3815276666356985, 'per_stock_20_40_60_80_mnl': 0.07773120936173804, 'pooled_20_40_60_80': 0.30173736141099944, 'pooled_15_35_65_85': 0.14010290623639496, 'pooled_20_40_60_80_mnl': 0.09215762967941413, 'correlation_ref': 0.3694819833320293}

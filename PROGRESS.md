@@ -189,3 +189,32 @@ tried and **rejected on measurement**, then reverted rather than kept:
 cutting per-draw Python/pandas overhead, not the DP itself. Same conclusion recorded in the
 future-work plan. Two useful tests survive from the attempt: numba-vs-python distance parity
 and gate determinism.
+
+## Future work completed (branch `feature/future-work`)
+
+Everything from the future-work plan is done except nothing — all items closed:
+
+- **Correctness (P0):** B1 coverage crash/under-investment, B2 optimiser knobs in config,
+  B3 full config validation, B4 band guard, B5 undersized-cluster warning, B6 order-independent
+  bootstrap seeds.
+- **Performance (P1):** O1–O3 attempted and reverted on measurement (see above).
+- **Tests & fixtures (P1):** F1 alternate fixture universe + sector map, F2 conftest toy
+  fixtures (block distance, separable symbol frame), F3 no-look-ahead, F4 reproducibility,
+  F5 bug regressions, F6 CLI smoke, F7 allocator edge cases, F8 fixture golden.
+- **Infra (P2):** E1 CI workflow, E2 ruff/mypy config, E3 `genomefolio` console entry point,
+  E4 logging + `--verbose`, E5 run metadata, E6 daily-series persistence, E7 package rename
+  `src`→`genomefolio`, E8 mkdocs site, E9 dead-code cleanup.
+- **Research (P2):** M1 band-consensus clustering, M2 deflated Sharpe, M3 stationary
+  bootstrap, M4 DTW baseline (`method="dtw"`), M5 factor-model null gate, M6 rolling z-score
+  symbolization + 5/7/9-symbol alphabets, M7 Ledoit-Wolf risk-parity allocators, M8 spread +
+  impact cost model, M9 cross-universe power study, M10 generic pre-registration harness,
+  M11 robustness grid + plots.
+
+Suite grew to 146 tests (ruff + mypy clean). Results artifacts were regenerated with the new
+code: metrics are unchanged (e.g. alignment Sharpe 0.332, gate pass 0.903); only bootstrap CI
+bounds shift slightly from the B6 seeding change, and every pre-registered verdict is
+unchanged.
+
+**Perf(SPEED) / general cleanups / not-suppressed warnings:** the B5 warning is intentionally
+informational and fires on small universes; suppress with `PYTHONWARNINGS=ignore` when
+running scripts if it is noisy.

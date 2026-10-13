@@ -1,8 +1,8 @@
-[16:12:50] period=2005-01-01..2012-12-31 tickers=20 days=2011 rebalances=83
-[16:12:56] per_stock: sharpe=0.635 ann_return=0.1112 vol=0.196
-[16:12:56] pooled_mnl: sharpe=0.707 ann_return=0.1354 vol=0.211
-[16:12:56] equal_weight: sharpe=0.639 ann_return=0.1190 vol=0.211
-[16:12:59] pooled_mnl sharpe diff vs equal_weight: (-0.005803773057503737, 0.14133418406894696)
-[16:12:59] H2 NOT SUPPORTED (CI includes 0)
-[16:13:01] PW block length=42 -> pooled_mnl sharpe diff (-0.0032004973586414417, 0.13996233385130788)
-[16:13:01] wrote time_oos_eval.csv, time_oos_ci.csv, time_oos_ci_pw.csv
+[21:24:28] period=2005-01-01..2012-12-31 tickers=20 days=2011 rebalances=83
+[21:24:43] per_stock: sharpe=0.635 ann_return=0.1112 vol=0.196
+[21:24:43] pooled_mnl: sharpe=0.707 ann_return=0.1354 vol=0.211
+[21:24:43] equal_weight: sharpe=0.639 ann_return=0.1190 vol=0.211
+[21:24:53] pooled_mnl sharpe diff vs equal_weight: (-0.0021584330358317347, 0.14059130140422735)
+[21:24:53] H2 NOT SUPPORTED (CI includes 0)
+[21:24:56] PW block length=42 -> pooled_mnl sharpe diff (-0.002297500576997457, 0.13862806036233424)
+[21:24:57] wrote time_oos_eval.csv, time_oos_ci.csv, time_oos_ci_pw.csv, time_oos_daily.csv, time_oos_meta.json
