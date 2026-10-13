@@ -70,6 +70,8 @@ portfolio:
 
 costs:
   base_bps: 10.0
+  spread_bps: 0.0            # half-spread component
+  impact_coeff: 0.0          # square-root market impact (bps per turnover^0.5); 0 = flat model
   sweep_bps: [0, 5, 10, 15, 20, 25]
 
 bootstrap:

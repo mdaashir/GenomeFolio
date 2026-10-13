@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 
 from genomefolio.config import Config, load_config, load_sectors, validate_sector_coverage
+from genomefolio.costs import transaction_cost
 from genomefolio.portfolio import (
     correlation_clusters,
     equal_weights,
@@ -56,14 +57,18 @@ class BacktestResult:
     gate_passed: dict = field(default_factory=dict)
     weights: dict = field(default_factory=dict)
     cost_bps: float = 0.0
+    spread_bps: float = 0.0
+    impact_coeff: float = 0.0
 
     def net_returns(self, cost_bps: float | None = None) -> pd.Series:
-        """Daily portfolio returns net of ``cost_bps`` on turnover, applied at each rebalance."""
+        """Daily portfolio returns net of the transaction-cost model, per rebalance."""
         bps = self.cost_bps if cost_bps is None else cost_bps
         parts = []
         for date, period in self.period_returns:
             p = period.copy()
-            p.iloc[0] -= (bps / 1e4) * float(self.turnover.get(date, 0.0))
+            p.iloc[0] -= transaction_cost(
+                float(self.turnover.get(date, 0.0)), bps, self.spread_bps, self.impact_coeff
+            )
             parts.append(p)
         return pd.concat(parts).sort_index() if parts else pd.Series(dtype=float)
 
@@ -350,6 +355,8 @@ def run_backtest(
         gate_passed=gate_record,
         weights=weight_record,
         cost_bps=cost_bps,
+        spread_bps=cfg.costs.spread_bps,
+        impact_coeff=cfg.costs.impact_coeff,
     )
 
 
@@ -379,7 +386,9 @@ def gate_passed_only_view(results: dict[str, BacktestResult], reference: str = "
         for d, p in res.period_returns:
             if d in keep:
                 pp = p.copy()
-                pp.iloc[0] -= (res.cost_bps / 1e4) * float(res.turnover.get(d, 0.0))
+                pp.iloc[0] -= transaction_cost(
+                    float(res.turnover.get(d, 0.0)), res.cost_bps, res.spread_bps, res.impact_coeff
+                )
                 parts.append(pp)
         daily = pd.concat(parts) if parts else pd.Series(dtype=float)
         m = performance_metrics(daily)

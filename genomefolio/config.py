@@ -122,6 +122,8 @@ class PortfolioConfig:
 class CostsConfig:
     base_bps: float
     sweep_bps: tuple[float, ...]
+    spread_bps: float = 0.0
+    impact_coeff: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -247,6 +249,8 @@ def load_config(path: str | Path | None = None) -> Config:
         costs=CostsConfig(
             base_bps=float(co["base_bps"]),
             sweep_bps=tuple(float(b) for b in co["sweep_bps"]),
+            spread_bps=float(co.get("spread_bps", 0.0)),
+            impact_coeff=float(co.get("impact_coeff", 0.0)),
         ),
         bootstrap=BootstrapConfig(
             block_length=int(bo["block_length"]),
@@ -296,6 +300,8 @@ def _validate(cfg: Config) -> None:
         raise ValueError("portfolio.within_cluster must be equal|inverse_vol|inverse_vol_lw")
     if cfg.costs.base_bps < 0:
         raise ValueError("costs.base_bps must be >= 0")
+    if cfg.costs.spread_bps < 0 or cfg.costs.impact_coeff < 0:
+        raise ValueError("costs.spread_bps and costs.impact_coeff must be >= 0")
     if not (0.0 < cfg.bootstrap.confidence < 1.0):
         raise ValueError("bootstrap.confidence must be inside (0, 1)")
     if len(set(cfg.universe.tickers)) != len(cfg.universe.tickers):
