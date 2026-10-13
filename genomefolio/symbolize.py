@@ -97,3 +97,29 @@ def symbolize(
         return pd.DataFrame(out, index=data.index)
     out = {col: symbolize_series(data[col], cutoffs) for col in data.columns}
     return pd.DataFrame(out, index=data.index)
+
+
+def symbolize_zscore(
+    returns: pd.DataFrame,
+    window: int,
+    z_edges: tuple[float, ...] = (-1.5, -0.5, 0.5, 1.5),
+    min_periods: int | None = None,
+) -> pd.DataFrame:
+    """Symbolize each stock by the z-score of its return versus a trailing window.
+
+    A regime-aware alternative to per-stock quantiles: the same move is "big" in a calm
+    regime and ordinary in a volatile one. Uses only trailing data (no look-ahead); the
+    first ``min_periods`` observations are NaN.
+    """
+    mp = min_periods if min_periods is not None else max(2, window // 2)
+    edges = np.asarray(z_edges, dtype=float)
+    out = {}
+    for col in returns.columns:
+        s = returns[col].astype(float)
+        mean = s.rolling(window, min_periods=mp).mean()
+        std = s.rolling(window, min_periods=mp).std(ddof=0)
+        z = ((s - mean) / std).to_numpy(dtype=float)
+        codes = np.digitize(z, edges, right=False).astype(float)
+        codes[np.isnan(z)] = np.nan
+        out[col] = pd.Series(codes, index=s.index)
+    return pd.DataFrame(out, index=returns.index)

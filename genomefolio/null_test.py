@@ -128,3 +128,18 @@ def evaluate_gate(
         fdr_significant_fraction=float(sig.mean()) if sig.size else float("nan"),
         pair_pvalues=pair_pvalues,
     )
+
+
+def factor_neutral_symbols(
+    window_returns: pd.DataFrame, cutoffs, quantile_scope: str = "per_stock"
+) -> pd.DataFrame:
+    """Symbols of **market-neutral** (factor-residual) returns.
+
+    The circular-shift gate passes ~90% on raw symbols because equities share a market
+    factor, so any pair co-moves. Gating on factor-residual returns removes that shared
+    component (stock return minus the equal-weight universe return, per day) so the gate
+    tests residual pattern structure instead — a factor-model null.
+    """
+    from genomefolio.symbolize import market_neutralize, symbolize
+
+    return symbolize(market_neutralize(window_returns), cutoffs, quantile_scope=quantile_scope)

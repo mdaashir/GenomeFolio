@@ -270,8 +270,8 @@ def _validate(cfg: Config) -> None:
         ("symbolize.cutoffs", cfg.symbolize.cutoffs),
         ("symbolize.cutoffs_ablation", cfg.symbolize.cutoffs_ablation),
     ):
-        if len(cut) != 4:
-            raise ValueError(f"{name} must have exactly 4 cutoffs for the 5-symbol alphabet")
+        if len(cut) not in {4, 6, 8}:
+            raise ValueError(f"{name} must have 4, 6 or 8 cutoffs (5, 7 or 9 symbols)")
         if list(cut) != sorted(cut) or not all(0.0 < c < 1.0 for c in cut):
             raise ValueError(f"{name} must be strictly increasing and inside (0, 1)")
     if cfg.cluster.k_min < 2:
