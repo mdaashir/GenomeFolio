@@ -54,3 +54,20 @@ def test_stability_ari_diagonal_is_one():
     r = ClusteringResult(labels=labels, n_clusters=2, silhouette=0.5, min_size_ok=True)
     M = stability_ari({2: r, 5: r})
     assert np.allclose(np.diag(M.to_numpy()), 1.0)
+
+
+def test_warns_when_no_valid_k_exists():
+    # 6 stocks with one outlier: k_cap=2, and the only cut splits 1 vs 5 -> undersized
+    n = 6
+    D = np.full((n, n), 0.1)
+    D[0, :] = D[:, 0] = 1.0
+    np.fill_diagonal(D, 0.0)
+    cols = [f"S{i}" for i in range(n)]
+    frame = pd.DataFrame(D, index=cols, columns=cols)
+    import warnings
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        res = select_constrained_k(frame, CFG)
+    assert not res.min_size_ok
+    assert any(issubclass(w.category, RuntimeWarning) for w in caught)

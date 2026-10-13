@@ -15,6 +15,7 @@ Index stability, so the chosen solution is not an artefact of one band.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
@@ -78,6 +79,13 @@ def select_constrained_k(
         candidates.append((sil, k, labels, ok))
 
     ok_candidates = [c for c in candidates if c[3]]
+    if not ok_candidates:
+        warnings.warn(
+            "no k satisfied min_cluster_size; returning the best-silhouette cut anyway "
+            "(min_size_ok=False)",
+            RuntimeWarning,
+            stacklevel=2,
+        )
     pool = ok_candidates if ok_candidates else candidates
     best = max(pool, key=lambda c: c[0])
     sil, k, labels, ok = best
