@@ -35,7 +35,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from src.config import AlignConfig
+from genomefolio.config import AlignConfig
 
 NEG = -1.0e18
 

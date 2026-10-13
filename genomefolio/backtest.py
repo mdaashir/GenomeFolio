@@ -23,8 +23,8 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from src.config import Config, load_config, load_sectors, validate_sector_coverage
-from src.portfolio import (
+from genomefolio.config import Config, load_config, load_sectors, validate_sector_coverage
+from genomefolio.portfolio import (
     correlation_clusters,
     equal_weights,
     optimised_weights,
@@ -213,23 +213,23 @@ def paired_block_bootstrap(
 # Engine
 # --------------------------------------------------------------------------------------
 def _rebalance_positions(n: int, train_days: int, rebalance_days: int) -> list[int]:
-    from src.rolling import rebalance_positions
+    from genomefolio.rolling import rebalance_positions
 
     return rebalance_positions(n, train_days, rebalance_days)
 
 
 def _alignment_clusters(symbols, cfg: Config):
-    from src.align import distance_matrix
-    from src.cluster import select_constrained_k
+    from genomefolio.align import distance_matrix
+    from genomefolio.cluster import select_constrained_k
 
     D = distance_matrix(symbols, cfg.align)
     return select_constrained_k(D, cfg.cluster, cfg.cluster.linkage)
 
 
 def _alignment_weights(window, cfg: Config, rng: np.random.Generator, n_draws: int, gate_record: dict, date):
-    from src.forecast import forecast_clusters
-    from src.null_test import evaluate_gate
-    from src.symbolize import symbolize
+    from genomefolio.forecast import forecast_clusters
+    from genomefolio.null_test import evaluate_gate
+    from genomefolio.symbolize import symbolize
 
     symbols = symbolize(
         window,
@@ -305,7 +305,7 @@ def run_backtest(
             clusters = sector_clusters(sector_map, tickers)
             w = two_stage_weights(clusters, window, cfg.portfolio)
         elif method == "random":
-            from src.symbolize import symbolize
+            from genomefolio.symbolize import symbolize
 
             clusters = _alignment_clusters(
                 symbolize(window, cfg.symbolize.cutoffs, quantile_scope=cfg.symbolize.quantile_scope), cfg
@@ -383,8 +383,8 @@ def gate_passed_only_view(results: dict[str, BacktestResult], reference: str = "
 # --------------------------------------------------------------------------------------
 def band_sweep_report(returns: pd.DataFrame, cfg: Config) -> dict:
     """Cluster once on the latest training window across band widths; report stability."""
-    from src.cluster import band_sweep, stability_ari
-    from src.symbolize import symbolize
+    from genomefolio.cluster import band_sweep, stability_ari
+    from genomefolio.symbolize import symbolize
 
     window = returns.iloc[-cfg.window.train_days :]
     symbols = symbolize(
@@ -445,7 +445,7 @@ def _print_report(report: dict, cfg: Config) -> None:
 
 def main(config_path, use_fixture, n_draws, cost_bps, methods, band_only):
     """Entry point shared by the CLI."""
-    from src.data import (
+    from genomefolio.data import (
         align_to_common_days,
         get_prices,
         load_fixture,

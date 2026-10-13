@@ -1,6 +1,6 @@
 """Rolling-update schedule.
 
-Owns the walk-forward windowing so the engine (``src/backtest.py``) stays a thin loop:
+Owns the walk-forward windowing so the engine (``genomefolio/backtest.py``) stays a thin loop:
 at each rebalance date we re-symbolize, re-align, re-cluster and rebalance, using only
 the trailing training window (no look-ahead).
 

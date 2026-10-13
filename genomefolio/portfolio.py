@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 
-from src.config import ClusterConfig, PortfolioConfig
+from genomefolio.config import ClusterConfig, PortfolioConfig
 
 
 @dataclass
@@ -177,7 +177,7 @@ def optimised_weights(
 
 def correlation_clusters(returns_window: pd.DataFrame, cluster_cfg: ClusterConfig) -> dict[int, tuple[str, ...]]:
     """Cluster stocks by correlation distance (``1 - corr``) with the same k rules."""
-    from src.cluster import select_constrained_k
+    from genomefolio.cluster import select_constrained_k
 
     corr = returns_window.corr().to_numpy()
     D = 1.0 - corr

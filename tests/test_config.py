@@ -1,7 +1,7 @@
 import pytest
 import yaml
 
-from src.config import Config, load_config, load_sectors, validate_sector_coverage
+from genomefolio.config import Config, load_config, load_sectors, validate_sector_coverage
 
 
 def test_load_default_config():

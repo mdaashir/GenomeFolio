@@ -32,14 +32,14 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import adjusted_rand_score
 
-from src.align import distance_matrix
-from src.backtest import paired_block_bootstrap, performance_metrics, seed_for
-from src.cluster import select_constrained_k
-from src.config import load_config
-from src.data import align_to_common_days, get_prices, time_split, to_returns
-from src.portfolio import correlation_clusters, equal_weights, two_stage_weights
-from src.rolling import walk_forward_windows
-from src.symbolize import symbolize
+from genomefolio.align import distance_matrix
+from genomefolio.backtest import paired_block_bootstrap, performance_metrics, seed_for
+from genomefolio.cluster import select_constrained_k
+from genomefolio.config import load_config
+from genomefolio.data import align_to_common_days, get_prices, time_split, to_returns
+from genomefolio.portfolio import correlation_clusters, equal_weights, two_stage_weights
+from genomefolio.rolling import walk_forward_windows
+from genomefolio.symbolize import symbolize
 
 REPORTS = Path("reports")
 REPORTS.mkdir(exist_ok=True)

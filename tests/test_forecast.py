@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.config import load_config
-from src.forecast import forecast_clusters, forecast_series
+from genomefolio.config import load_config
+from genomefolio.forecast import forecast_clusters, forecast_series
 
 CFG = load_config().forecast
 

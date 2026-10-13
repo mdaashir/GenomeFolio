@@ -30,14 +30,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.backtest import paired_block_bootstrap, performance_metrics, seed_for
-from src.config import load_config
-from src.data import align_to_common_days, get_prices, time_split, to_returns
-from src.forecast import forecast_clusters
-from src.null_test import evaluate_gate
-from src.portfolio import correlation_clusters, equal_weights, two_stage_weights
-from src.rolling import walk_forward_windows
-from src.symbolize import symbolize
+from genomefolio.backtest import paired_block_bootstrap, performance_metrics, seed_for
+from genomefolio.config import load_config
+from genomefolio.data import align_to_common_days, get_prices, time_split, to_returns
+from genomefolio.forecast import forecast_clusters
+from genomefolio.null_test import evaluate_gate
+from genomefolio.portfolio import correlation_clusters, equal_weights, two_stage_weights
+from genomefolio.rolling import walk_forward_windows
+from genomefolio.symbolize import symbolize
 
 REPORTS = Path("reports")
 REPORTS.mkdir(exist_ok=True)

@@ -4,13 +4,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.align import (
+from genomefolio.align import (
     distance_matrix,
     global_score,
     local_score,
     substitution_matrix,
 )
-from src.config import load_config
+from genomefolio.config import load_config
 
 CFG = load_config().align
 

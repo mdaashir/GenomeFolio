@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.config import load_config
-from src.data import align_to_common_days, load_fixture, to_returns
-from src.symbolize import (
+from genomefolio.config import load_config
+from genomefolio.data import align_to_common_days, load_fixture, to_returns
+from genomefolio.symbolize import (
     BIG_DOWN,
     BIG_UP,
     FLAT,

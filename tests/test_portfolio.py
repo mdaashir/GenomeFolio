@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.config import load_config, load_sectors
-from src.data import align_to_common_days, load_fixture, to_returns
-from src.portfolio import (
+from genomefolio.config import load_config, load_sectors
+from genomefolio.data import align_to_common_days, load_fixture, to_returns
+from genomefolio.portfolio import (
     cap_redistribute,
     correlation_clusters,
     equal_weights,

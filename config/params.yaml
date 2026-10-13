@@ -1,4 +1,4 @@
-# GenomeFolio parameters. Every knob lives here; nothing is hardcoded in src/.
+# GenomeFolio parameters. Every knob lives here; nothing is hardcoded in genomefolio/.
 seed: 42
 
 universe:

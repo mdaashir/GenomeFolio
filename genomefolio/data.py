@@ -1,6 +1,6 @@
 """Price loading and return construction.
 
-Inputs: a :class:`~src.config.Config`, or explicit tickers/date-range/paths.
+Inputs: a :class:`~genomefolio.config.Config`, or explicit tickers/date-range/paths.
 Outputs: a wide ``prices`` frame (dates x tickers, adjusted close) and a wide
 ``returns`` frame of simple daily returns on the common trading days.
 
@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.config import REPO_ROOT, Config
+from genomefolio.config import REPO_ROOT, Config
 
 _FIXTURE_TICKERS = ("AAPL", "MSFT", "INTC", "CSCO", "JPM", "JNJ", "PG", "XOM", "KO", "DIS")
 

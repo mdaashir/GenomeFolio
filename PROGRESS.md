@@ -9,19 +9,19 @@ portfolio with a bias-aware backtest.
 
 | Stage | Module | Status |
 |-------|--------|--------|
-| 1. Data (prices → returns) | `src/data.py` | done, tested |
-| 2. Symbolization (5-symbol alphabet) | `src/symbolize.py` | done, tested |
-| 3. Alignment (banded NW, affine gaps) | `src/align.py` | done, tested |
-| 4. Clustering (constrained k, band sweep) | `src/cluster.py` | done, tested |
-| 5. Shuffled-null gate (circular shift) | `src/null_test.py` | done, tested |
-| 6. Forecast (per-cluster ARIMA) | `src/forecast.py` | done, tested |
-| 7. Portfolio (two-stage + caps) | `src/portfolio.py` | done, tested |
-| 8. Rolling update | `src/rolling.py` | done |
-| 9. Backtest + metrics + bootstrap | `src/backtest.py` | done, tested |
+| 1. Data (prices → returns) | `genomefolio/data.py` | done, tested |
+| 2. Symbolization (5-symbol alphabet) | `genomefolio/symbolize.py` | done, tested |
+| 3. Alignment (banded NW, affine gaps) | `genomefolio/align.py` | done, tested |
+| 4. Clustering (constrained k, band sweep) | `genomefolio/cluster.py` | done, tested |
+| 5. Shuffled-null gate (circular shift) | `genomefolio/null_test.py` | done, tested |
+| 6. Forecast (per-cluster ARIMA) | `genomefolio/forecast.py` | done, tested |
+| 7. Portfolio (two-stage + caps) | `genomefolio/portfolio.py` | done, tested |
+| 8. Rolling update | `genomefolio/rolling.py` | done |
+| 9. Backtest + metrics + bootstrap | `genomefolio/backtest.py` | done, tested |
 | — Evaluation / write-up | `reports/RESULTS.md`, this file | done |
 
 Test suite: `uv run pytest` (60 tests). Smoke run:
-`uv run python -m src.backtest --use-fixture --draws 30`.
+`uv run python -m genomefolio.backtest --use-fixture --draws 30`.
 
 ## Parameters chosen and why
 

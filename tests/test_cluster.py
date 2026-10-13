@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from src.cluster import select_constrained_k, stability_ari
-from src.config import load_config
+from genomefolio.cluster import select_constrained_k, stability_ari
+from genomefolio.config import load_config
 
 CFG = load_config().cluster
 N = 12
@@ -48,7 +48,7 @@ def test_small_universe_falls_back_without_multiple_clusters():
 
 
 def test_stability_ari_diagonal_is_one():
-    from src.cluster import ClusteringResult
+    from genomefolio.cluster import ClusteringResult
 
     labels = pd.Series([0, 0, 1, 1], index=list("abcd"))
     r = ClusteringResult(labels=labels, n_clusters=2, silhouette=0.5, min_size_ok=True)

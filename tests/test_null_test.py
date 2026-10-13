@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from src.config import load_config
-from src.null_test import circular_shift_frame, evaluate_gate
+from genomefolio.config import load_config
+from genomefolio.null_test import circular_shift_frame, evaluate_gate
 
 CFG = load_config()
 

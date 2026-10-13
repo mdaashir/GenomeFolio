@@ -25,7 +25,7 @@ jobs:
         run: uv run mypy src
 
       - name: Tests
-        run: uv run pytest --cov=src --cov-report=term-missing
+        run: uv run pytest --cov=genomefolio --cov-report=term-missing
 
       - name: Fixture smoke (offline)
-        run: uv run python -m src.backtest --use-fixture --draws 10 --band-only
+        run: uv run python -m genomefolio.backtest --use-fixture --draws 10 --band-only

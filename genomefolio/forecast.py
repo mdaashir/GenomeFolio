@@ -23,7 +23,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from src.config import ForecastConfig
+from genomefolio.config import ForecastConfig
 
 
 @dataclass

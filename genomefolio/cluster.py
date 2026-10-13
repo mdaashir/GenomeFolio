@@ -6,7 +6,7 @@ Hierarchical average linkage (UPGMA) on the normalised alignment distance, with 
 ``min_cluster_size`` members** (silhouette otherwise favours k = 2 with ~20 stocks).
 
 ``select_constrained_k`` is the single source of truth for the k-selection rule; the
-null gate (``src/null_test.py``) reuses it so the real and null clusterings are treated
+null gate (``genomefolio/null_test.py``) reuses it so the real and null clusterings are treated
 identically.
 
 Also provides a **band sweep** (re-cluster at several band widths) plus Adjusted Rand
@@ -24,7 +24,7 @@ from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.spatial.distance import squareform
 from sklearn.metrics import adjusted_rand_score, silhouette_score
 
-from src.config import AlignConfig, ClusterConfig
+from genomefolio.config import AlignConfig, ClusterConfig
 
 
 @dataclass
@@ -97,7 +97,7 @@ def band_sweep(
     symbols: pd.DataFrame, align_cfg: AlignConfig, cluster_cfg: ClusterConfig, bands
 ) -> dict[int, ClusteringResult]:
     """Cluster at each band width in ``bands`` (re-aligning each time)."""
-    from src.align import distance_matrix
+    from genomefolio.align import distance_matrix
 
     out: dict[int, ClusteringResult] = {}
     for w in bands:

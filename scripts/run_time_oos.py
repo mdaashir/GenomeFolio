@@ -24,16 +24,16 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_holdout_eval as h
 
-from src.backtest import (
+from genomefolio.backtest import (
     paired_block_bootstrap,
     performance_metrics,
     politis_white_block_length,
     seed_for,
 )
-from src.config import load_config
-from src.data import align_to_common_days, get_prices, to_returns
-from src.portfolio import equal_weights
-from src.rolling import walk_forward_windows
+from genomefolio.config import load_config
+from genomefolio.data import align_to_common_days, get_prices, to_returns
+from genomefolio.portfolio import equal_weights
+from genomefolio.rolling import walk_forward_windows
 
 REPORTS = Path("reports")
 LOG = REPORTS / "time_oos.log"

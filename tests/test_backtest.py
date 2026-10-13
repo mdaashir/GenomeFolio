@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.backtest import (
+from genomefolio.backtest import (
     _rebalance_positions,
     gate_passed_only_view,
     metrics_table,
@@ -12,8 +12,8 @@ from src.backtest import (
     run_backtest,
     seed_for,
 )
-from src.config import load_config
-from src.data import align_to_common_days, load_fixture, to_returns
+from genomefolio.config import load_config
+from genomefolio.data import align_to_common_days, load_fixture, to_returns
 
 CFG = load_config()
 

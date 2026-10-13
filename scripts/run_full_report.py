@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.backtest import (
+from genomefolio.backtest import (
     band_sweep_report,
     gate_passed_only_view,
     metrics_table,
@@ -31,8 +31,8 @@ from src.backtest import (
     run_backtest,
     seed_for,
 )
-from src.config import load_config
-from src.data import align_to_common_days, get_prices, time_split, to_returns
+from genomefolio.config import load_config
+from genomefolio.data import align_to_common_days, get_prices, time_split, to_returns
 
 REPORTS = Path("reports")
 REPORTS.mkdir(exist_ok=True)
