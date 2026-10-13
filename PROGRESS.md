@@ -171,3 +171,21 @@ result in `reports/HOLDOUT.md`.
 **Done:** full Politis–White automatic block-length selection (`politis_white_block_length`);
 sensitivity re-run closes nothing out — both OOS CIs still include 0 (block 42 → (-0.003, 0.140);
 block 52 → (-0.061, 0.102)). See `reports/REPORT.md` §4.
+
+## Performance findings (branch `feature/future-work`)
+
+The null gate dominates runtime (~30 ms/draw at 20 stocks, T=252). Three optimizations were
+tried and **rejected on measurement**, then reverted rather than kept:
+
+- **Band-limited DP storage** (`(n+1)×(2w+1)` instead of full square): the full-square
+  allocation is cheap at T=252 (the expensive 458 ms case in earlier profiling was T=1257),
+  and the per-row band reset added overhead — 13.6 ms vs 8.3 ms per distance matrix. Reverted.
+- **Batched single-call distance kernel**: no win; Python→numba dispatch is negligible
+  (~1 µs/pair) next to the DP work.
+- **Thread-parallel gate draws**: slower (36.2 vs 30.9 ms/draw on 16 cores) because the
+  per-draw work is GIL/overhead-bound (pandas, RNG creation, scipy/sklearn), not kernel-bound.
+
+**Conclusion:** the alignment kernel is already fast; the lever is **process** parallelism or
+cutting per-draw Python/pandas overhead, not the DP itself. Same conclusion recorded in the
+future-work plan. Two useful tests survive from the attempt: numba-vs-python distance parity
+and gate determinism.
