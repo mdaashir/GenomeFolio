@@ -21,7 +21,12 @@ import numpy as np
 import pandas as pd
 
 from src.align import distance_matrix
-from src.backtest import paired_block_bootstrap, performance_metrics, politis_white_block_length
+from src.backtest import (
+    paired_block_bootstrap,
+    performance_metrics,
+    politis_white_block_length,
+    seed_for,
+)
 from src.cluster import select_constrained_k
 from src.config import load_config
 from src.data import align_to_common_days, get_prices, to_returns
@@ -102,12 +107,12 @@ def main() -> None:
     for name, m in table.items():
         log(f"{name}: sharpe={m['sharpe']:.3f} ann_return={m['ann_return']:.4f} vol={m['ann_vol']:.3f}")
 
-    rng = np.random.default_rng(base.seed + 999)
     ci = {
         name: paired_block_bootstrap(
             daily[name], daily["equal_weight"],
             base.bootstrap.n_resamples, base.bootstrap.block_length,
-            base.bootstrap.confidence, rng, base.bootstrap.use_politis_white,
+            base.bootstrap.confidence, np.random.default_rng(seed_for(name, base.seed)),
+            base.bootstrap.use_politis_white,
         )
         for name in ("per_stock", "pooled_mnl")
     }
@@ -123,12 +128,11 @@ def main() -> None:
     log(verdict)
 
     # Robustness: same bootstrap with the Politis-White automatic block length.
-    rng_pw = np.random.default_rng(base.seed + 1001)
     ci_pw = {
         name: paired_block_bootstrap(
             daily[name], daily["equal_weight"],
             base.bootstrap.n_resamples, base.bootstrap.block_length,
-            base.bootstrap.confidence, rng_pw, True,
+            base.bootstrap.confidence, np.random.default_rng(seed_for(name + "_pw", base.seed)), True,
         )
         for name in ("per_stock", "pooled_mnl")
     }

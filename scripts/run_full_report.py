@@ -29,6 +29,7 @@ from src.backtest import (
     paired_block_bootstrap,
     performance_metrics,
     run_backtest,
+    seed_for,
 )
 from src.config import load_config
 from src.data import align_to_common_days, get_prices, time_split, to_returns
@@ -74,7 +75,6 @@ def main(n_draws: int) -> None:
     descriptive.to_csv(REPORTS / "metrics_gate_passed_only.csv")
     log("wrote metrics_gate_passed_only.csv")
 
-    rng = np.random.default_rng(cfg.seed + 999)
     ci = {
         m: paired_block_bootstrap(
             results["alignment"].daily_returns,
@@ -82,7 +82,7 @@ def main(n_draws: int) -> None:
             cfg.bootstrap.n_resamples,
             cfg.bootstrap.block_length,
             cfg.bootstrap.confidence,
-            rng,
+            np.random.default_rng(seed_for(m, cfg.seed)),
             cfg.bootstrap.use_politis_white,
         )
         for m in METHODS

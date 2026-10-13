@@ -17,6 +17,7 @@ use the window ending at ``t`` only.
 
 from __future__ import annotations
 
+import zlib
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -33,6 +34,15 @@ from src.portfolio import (
 )
 
 PERIODS_PER_YEAR = 252
+
+
+def seed_for(label: str, base: int = 0) -> int:
+    """Deterministic per-comparison seed from a label.
+
+    Lets each bootstrap draw its own RNG so CIs do not depend on the order comparisons
+    happen to be computed in (a shared RNG advances across calls).
+    """
+    return (int(base) + zlib.crc32(label.encode("utf-8"))) % (2**32)
 
 
 @dataclass
@@ -402,7 +412,6 @@ def run_full_report(
 
     cis = {}
     if "alignment" in results:
-        rng = np.random.default_rng(cfg.seed + 999)
         for name, res in results.items():
             if name == "alignment":
                 continue
@@ -412,7 +421,7 @@ def run_full_report(
                 cfg.bootstrap.n_resamples,
                 cfg.bootstrap.block_length,
                 cfg.bootstrap.confidence,
-                rng,
+                np.random.default_rng(seed_for(name, cfg.seed)),
                 cfg.bootstrap.use_politis_white,
             )
     return {"results": results, "table": table, "descriptive": descriptive, "cis": cis}

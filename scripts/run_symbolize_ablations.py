@@ -33,7 +33,7 @@ import pandas as pd
 from sklearn.metrics import adjusted_rand_score
 
 from src.align import distance_matrix
-from src.backtest import paired_block_bootstrap, performance_metrics
+from src.backtest import paired_block_bootstrap, performance_metrics, seed_for
 from src.cluster import select_constrained_k
 from src.config import load_config
 from src.data import align_to_common_days, get_prices, time_split, to_returns
@@ -156,12 +156,12 @@ def main(period: str = "report") -> None:
     pd.Series(stability, name="mean_ari_vs_baseline").to_csv(REPORTS / f"ablations_stability_{period}.csv")
     log(f"mean ARI vs baseline: {stability}")
 
-    rng = np.random.default_rng(cfg.seed + 999)
     ci = {
         name: paired_block_bootstrap(
             daily[name], daily["equal_weight"],
             cfg.bootstrap.n_resamples, cfg.bootstrap.block_length,
-            cfg.bootstrap.confidence, rng, cfg.bootstrap.use_politis_white,
+            cfg.bootstrap.confidence, np.random.default_rng(seed_for(name, cfg.seed)),
+            cfg.bootstrap.use_politis_white,
         )
         for name in daily
         if name != "equal_weight"

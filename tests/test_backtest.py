@@ -10,6 +10,7 @@ from src.backtest import (
     performance_metrics,
     politis_white_block_length,
     run_backtest,
+    seed_for,
 )
 from src.config import load_config
 from src.data import align_to_common_days, load_fixture, to_returns
@@ -116,3 +117,30 @@ def test_politis_white_grows_with_autocorrelation():
 def test_politis_white_short_and_degenerate_series():
     assert 1 <= politis_white_block_length(np.array([0.01, -0.02, 0.03])) <= 3
     assert 1 <= politis_white_block_length(np.zeros(500)) <= 500
+
+
+def test_seed_for_is_deterministic():
+    assert seed_for("alignment", 42) == seed_for("alignment", 42)
+    assert seed_for("alignment", 42) != seed_for("equal_weight", 42)
+
+
+def test_bootstrap_cis_are_order_independent():
+    rng = np.random.default_rng(2)
+    idx = pd.date_range("2020-01-01", periods=300, freq="B")
+    series = {
+        "x": pd.Series(rng.normal(0.001, 0.01, 300), index=idx),
+        "y": pd.Series(rng.normal(0.0005, 0.01, 300), index=idx),
+    }
+    base = pd.Series(rng.normal(0.0002, 0.01, 300), index=idx)
+
+    def compute(order):
+        return {
+            name: paired_block_bootstrap(
+                series[name], base, 300, 20, 0.95, np.random.default_rng(seed_for(name, 42))
+            )
+            for name in order
+        }
+
+    a, b = compute(["x", "y"]), compute(["y", "x"])
+    assert a["x"]["sharpe_diff"] == b["x"]["sharpe_diff"]
+    assert a["y"]["sharpe_diff"] == b["y"]["sharpe_diff"]
