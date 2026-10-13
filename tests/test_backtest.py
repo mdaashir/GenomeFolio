@@ -192,3 +192,13 @@ def test_alt_fixture_sector_control_is_fully_invested():
     res = run_backtest(r, cfg, method="sector", n_draws=5, cost_bps=0.0)
     for w in res.weights.values():
         assert abs(float(w.sum()) - 1.0) < 1e-6
+
+
+def test_fixture_equal_weight_golden():
+    # equal-weight is fully deterministic: a frozen snapshot catches silent regressions
+    res = run_backtest(_returns(days=400), CFG, method="equal_weight", cost_bps=0.0)
+    m = performance_metrics(res.daily_returns)
+    assert m["ann_return"] == pytest.approx(0.22394299005265417, abs=1e-6)
+    assert m["ann_vol"] == pytest.approx(0.10094786654663203, abs=1e-6)
+    assert m["sharpe"] == pytest.approx(2.0531090127454847, abs=1e-6)
+    assert m["max_drawdown"] == pytest.approx(-0.06803149409025266, abs=1e-6)

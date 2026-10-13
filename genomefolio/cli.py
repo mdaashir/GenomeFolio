@@ -30,6 +30,7 @@ def cli(config_path, use_fixture, n_draws, cost_bps, methods, band_only, verbose
         stream=sys.stdout,
         level=logging.DEBUG if verbose else logging.INFO,
         format="%(message)s",
+        force=True,
     )
     cfg = load_config(config_path)
     main(

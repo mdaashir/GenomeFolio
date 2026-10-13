@@ -156,3 +156,38 @@ def test_forecast_tilt_without_forecasts_falls_back_to_equal():
     cfg_tilt = replace(CFG.portfolio, cluster_method="forecast_tilt")
     w = two_stage_weights(clusters, win, cfg_tilt, forecasts=None)
     assert w.sum() == pytest.approx(1.0)
+
+
+def test_optimised_weights_handles_degenerate_covariance():
+    idx = pd.date_range("2020-01-01", periods=100, freq="B")
+    win = pd.DataFrame(np.zeros((100, 4)), index=idx, columns=list("abcd"))
+    cap = CFG.portfolio.cap(4)
+    w = optimised_weights(win, cap)
+    assert w.sum() == pytest.approx(1.0)
+    assert (w >= -1e-9).all()
+    assert (w <= cap + 1e-6).all()
+
+
+def test_inverse_vol_handles_zero_variance_stock():
+    from dataclasses import replace
+
+    idx = pd.date_range("2020-01-01", periods=100, freq="B")
+    rng = np.random.default_rng(0)
+    X = rng.normal(0.0, 0.01, (100, 4))
+    X[:, 3] = 0.0  # a zero-variance stock
+    win = pd.DataFrame(X, index=idx, columns=list("abcd"))
+    cfg = replace(CFG.portfolio, within_cluster="inverse_vol")
+    w = two_stage_weights({0: ("a", "b"), 1: ("c", "d")}, win, cfg)
+    assert w.sum() == pytest.approx(1.0)
+    assert np.isfinite(w.to_numpy()).all()
+
+
+def test_cap_non_binding_leaves_weights_unsaturated():
+    win = _returns_window()
+    clusters = {0: tuple(win.columns[:5]), 1: tuple(win.columns[5:])}
+    from dataclasses import replace
+
+    cfg = replace(CFG.portfolio, cap_floor=1.0)  # cap never binds with 10 stocks
+    w = two_stage_weights(clusters, win, cfg)
+    assert w.sum() == pytest.approx(1.0)
+    assert (w < 1.0).all()  # no single stock held whole
