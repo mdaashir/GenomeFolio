@@ -48,3 +48,18 @@ def test_spline_mode_is_finite():
     fc = forecast_series(_series(), cfg, 21)
     assert np.isfinite(fc.expected_return)
     assert fc.model == "spline"
+
+
+def test_forecast_path_has_horizon_length():
+    fc = forecast_series(_series(), CFG, 21)
+    assert fc.path is not None
+    assert len(fc.path) == 21
+    assert fc.path[-1] == pytest.approx(fc.expected_return)
+
+
+def test_fallback_path_has_horizon_length():
+    fc = forecast_series(_series(n=10), CFG, 21)
+    assert fc.fallback
+    assert fc.path is not None
+    assert len(fc.path) == 21
+    assert fc.path[-1] == pytest.approx(fc.expected_return)

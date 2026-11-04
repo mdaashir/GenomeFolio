@@ -20,6 +20,10 @@ Test suite: `uv run pytest`. Run: `uv run genomefolio --use-fixture`.
 Documentation: `docs/` contains abstract, explanation, demo, architecture and configuration
 guides, each in Markdown with a matching PDF in `docs/pdf/`.
 
+UI: `app.py` is a Streamlit app that runs the pipeline and shows every phase (data,
+symbolization, raw scores, pairwise distance, clustering, forecast) with graphs and tables.
+Run it with `uv run --group ui streamlit run app.py`.
+
 ## Removed in the "present" simplification
 
 The circular-shift null gate, the two-stage portfolio, the rolling update, the walk-forward

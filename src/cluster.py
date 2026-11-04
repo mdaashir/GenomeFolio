@@ -41,6 +41,41 @@ class ClusteringResult:
         return {k: tuple(v) for k, v in sorted(out.items())}
 
 
+def candidate_partitions(
+    D: pd.DataFrame, cfg: ClusterConfig, linkage_method: str = "average"
+) -> list[dict]:
+    """Evaluate every k in the valid range.
+
+    Returns one dict per ``k`` with ``k``, ``silhouette``, ``min_size_ok``, ``sizes`` and the
+    raw ``labels``. Shared by the selection rule and the UI/plots so both use the same
+    candidate set.
+    """
+    stocks = list(D.index)
+    n = len(stocks)
+    if n < 2:
+        raise ValueError("need at least two stocks to cluster")
+    condensed = squareform(D.to_numpy(), checks=False)
+    Z = linkage(condensed, method=linkage_method)
+    cap = cfg.k_cap(n)
+    out: list[dict] = []
+    for k in range(cfg.k_min, cap + 1):
+        labels = fcluster(Z, t=k, criterion="maxclust")
+        sizes = np.bincount(labels)[1:]
+        ok = bool(sizes.size and sizes.min() >= cfg.min_cluster_size)
+        sil = float(silhouette_score(D.to_numpy(), labels, metric="precomputed"))
+        out.append(
+            {"k": k, "silhouette": sil, "min_size_ok": ok, "sizes": sizes.tolist(), "labels": labels}
+        )
+    return out
+
+
+def silhouette_by_k(
+    D: pd.DataFrame, cfg: ClusterConfig, linkage_method: str = "average"
+) -> dict[int, float]:
+    """Silhouette score for each candidate k (for the UI and plots)."""
+    return {c["k"]: c["silhouette"] for c in candidate_partitions(D, cfg, linkage_method)}
+
+
 def select_constrained_k(
     D: pd.DataFrame, cfg: ClusterConfig, linkage_method: str = "average"
 ) -> ClusteringResult:
@@ -55,10 +90,7 @@ def select_constrained_k(
     n = len(stocks)
     if n < 2:
         raise ValueError("need at least two stocks to cluster")
-    condensed = squareform(D.to_numpy(), checks=False)
-    Z = linkage(condensed, method=linkage_method)
-    cap = cfg.k_cap(n)
-    if cap < cfg.k_min:
+    if cfg.k_cap(n) < cfg.k_min:
         # Too few stocks for the size rule to allow multiple clusters.
         return ClusteringResult(
             labels=pd.Series(np.zeros(n, dtype=int), index=stocks),
@@ -67,20 +99,16 @@ def select_constrained_k(
             min_size_ok=False,
         )
 
-    candidates: list[tuple[float, int, np.ndarray, bool]] = []
-    for k in range(cfg.k_min, cap + 1):
-        labels = fcluster(Z, t=k, criterion="maxclust")
-        sizes = np.bincount(labels)[1:]
-        ok = bool(sizes.min() >= cfg.min_cluster_size) if sizes.size else False
-        sil = float(silhouette_score(D.to_numpy(), labels, metric="precomputed"))
-        candidates.append((sil, k, labels, ok))
-
-    ok_candidates = [c for c in candidates if c[3]]
+    candidates = candidate_partitions(D, cfg, linkage_method)
+    ok_candidates = [c for c in candidates if c["min_size_ok"]]
     pool = ok_candidates if ok_candidates else candidates
-    best = max(pool, key=lambda c: c[0])
-    sil, k, labels, ok = best
-    zero_based = pd.Series(labels - 1, index=stocks)
-    return ClusteringResult(labels=zero_based, n_clusters=k, silhouette=sil, min_size_ok=ok)
+    best = max(pool, key=lambda c: float(c["silhouette"]))
+    return ClusteringResult(
+        labels=pd.Series(best["labels"] - 1, index=stocks),
+        n_clusters=int(best["k"]),
+        silhouette=float(best["silhouette"]),
+        min_size_ok=bool(best["min_size_ok"]),
+    )
 
 
 def band_sweep(

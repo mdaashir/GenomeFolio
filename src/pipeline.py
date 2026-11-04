@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from src.align import distance_matrix
+from src.align import distance_matrix, score_matrix
 from src.cluster import select_constrained_k
 from src.config import Config
 from src.forecast import ClusterForecast, forecast_clusters
@@ -25,13 +25,17 @@ from src.symbolize import symbolize
 
 @dataclass
 class PipelineResult:
-    """Clusters and their forecasts for one window."""
+    """Every phase's output for one window."""
 
     clusters: dict[int, tuple[str, ...]]
     forecasts: dict[int, ClusterForecast]
     n_clusters: int
     silhouette: float
     min_size_ok: bool
+    symbols: pd.DataFrame | None = None
+    scores: pd.DataFrame | None = None
+    distance: pd.DataFrame | None = None
+    composite_returns: pd.DataFrame | None = None
 
 
 def run_pipeline(returns_window: pd.DataFrame, cfg: Config) -> PipelineResult:
@@ -42,6 +46,7 @@ def run_pipeline(returns_window: pd.DataFrame, cfg: Config) -> PipelineResult:
         market_neutral=cfg.symbolize.market_neutral,
         quantile_scope=cfg.symbolize.quantile_scope,
     )
+    scores = score_matrix(symbols, cfg.align)
     D = distance_matrix(symbols, cfg.align)
     clustering = select_constrained_k(D, cfg.cluster, cfg.cluster.linkage)
 
@@ -56,4 +61,8 @@ def run_pipeline(returns_window: pd.DataFrame, cfg: Config) -> PipelineResult:
         n_clusters=clustering.n_clusters,
         silhouette=clustering.silhouette,
         min_size_ok=clustering.min_size_ok,
+        symbols=symbols,
+        scores=scores,
+        distance=D,
+        composite_returns=composite,
     )

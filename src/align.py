@@ -202,27 +202,50 @@ def _as_codes(series: pd.Series) -> np.ndarray:
     return np.asarray(series.to_numpy(), dtype=np.int64)
 
 
+def score_matrix(
+    symbols: pd.DataFrame, cfg: AlignConfig, band: int | None = None
+) -> pd.DataFrame:
+    """Raw pairwise alignment scores (before normalisation).
+
+    The diagonal holds each stock's self-score. :func:`distance_matrix` derives the
+    normalised distance from this matrix, and the UI displays both so the conversion from
+    alignment score to pairwise distance is visible.
+    """
+    band = cfg.band if band is None else band
+    cols = list(symbols.columns)
+    codes = {c: _as_codes(symbols[c]) for c in cols}
+    S = substitution_matrix(cfg.match_score)
+    n = len(cols)
+    M = np.zeros((n, n))
+    for i in range(n):
+        ci = cols[i]
+        M[i, i] = global_score(codes[ci], codes[ci], S, cfg, band)
+        for j in range(i + 1, n):
+            cj = cols[j]
+            s = global_score(codes[ci], codes[cj], S, cfg, band)
+            M[i, j] = M[j, i] = s
+    return pd.DataFrame(M, index=cols, columns=cols)
+
+
 def distance_matrix(
     symbols: pd.DataFrame, cfg: AlignConfig, band: int | None = None
 ) -> pd.DataFrame:
     """Normalised alignment-distance matrix for the stocks in ``symbols``.
 
-    Symmetric with a zero diagonal. Asserts (and relies on) symmetry and
-    non-negativity; it is not asserted to be a metric.
+    Built from the raw score matrix as ``1 - score / sqrt(self_i * self_j)``. Symmetric
+    with a zero diagonal. Asserts symmetry and non-negativity; it is not asserted to be a
+    metric.
     """
-    cols = list(symbols.columns)
-    codes = {c: _as_codes(symbols[c]) for c in cols}
-    S = substitution_matrix(cfg.match_score)
-    self_scores = {c: global_score(codes[c], codes[c], S, cfg, band) for c in cols}
-
+    raw = score_matrix(symbols, cfg, band)
+    cols = list(raw.columns)
+    A = raw.to_numpy()
+    self_scores = np.diag(A).copy()
     n = len(cols)
     D = np.zeros((n, n))
     for i in range(n):
         for j in range(i + 1, n):
-            a, b = cols[i], cols[j]
-            s = global_score(codes[a], codes[b], S, cfg, band)
-            denom = np.sqrt(self_scores[a] * self_scores[b])
-            sim = s / denom if denom > 0 else 0.0
+            denom = np.sqrt(self_scores[i] * self_scores[j])
+            sim = A[i, j] / denom if denom > 0 else 0.0
             d = 1.0 - sim
             if d < 0.0:
                 d = 0.0

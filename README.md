@@ -30,6 +30,18 @@ uv run genomefolio --use-fixture
 uv run genomefolio --use-fixture --out forecasts.json
 ```
 
+## Interactive UI (Streamlit)
+
+The app shows the output of every pipeline phase, each with a graph and a table: data
+(cumulative returns), symbolization (symbol heatmap and frequency), alignment (raw score
+matrix), **pairwise distance matrix** after the score→distance conversion, clustering
+(sizes, silhouette curve, dendrogram), forecast paths and the band-stability check.
+
+```
+uv sync --group ui
+uv run --group ui streamlit run app.py
+```
+
 ## Tests
 
 ```
@@ -51,7 +63,8 @@ Full documentation lives in `docs/`, in Markdown with matching PDFs in `docs/pdf
 
 ```
 config/    params.yaml (all knobs; nothing hardcoded)
-src/       config, data, symbolize, align, cluster, forecast, pipeline, cli
+src/       config, data, symbolize, align, cluster, forecast, pipeline, plots, cli
+app.py     Streamlit UI (every phase, graphs + tables)
 tests/     pytest suite per module
 notebooks/ exploration only
 data/      gitignored raw/cache; data/sample/ is the committed offline fixture

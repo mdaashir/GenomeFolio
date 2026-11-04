@@ -85,3 +85,27 @@ def test_distance_matrix_symmetric_non_negative_zero_diagonal():
     assert np.allclose(A, A.T)
     assert (A >= -1e-12).all()
     assert np.allclose(np.diag(A), 0.0)
+
+
+def test_score_matrix_is_symmetric_with_self_scores_on_diagonal():
+    from src.align import score_matrix
+
+    sym = _symbols()
+    M = score_matrix(sym, CFG)
+    A = M.to_numpy()
+    assert np.allclose(A, A.T)
+    assert (np.diag(A) > 0).all()
+
+
+def test_distance_matches_score_matrix_formula():
+    from src.align import score_matrix
+
+    sym = _symbols()
+    M = score_matrix(sym, CFG).to_numpy()
+    D = distance_matrix(sym, CFG).to_numpy()
+    self_scores = np.diag(M)
+    n = M.shape[0]
+    for i in range(n):
+        for j in range(i + 1, n):
+            expected = max(0.0, 1.0 - M[i, j] / np.sqrt(self_scores[i] * self_scores[j]))
+            assert D[i, j] == pytest.approx(expected)

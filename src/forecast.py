@@ -34,6 +34,7 @@ class ClusterForecast:
     model: str
     order: tuple[int, int, int] | None = None
     fallback: bool = False
+    path: list[float] | None = None  # cumulative forecast path over the horizon
 
 
 def _stationarity_d(series: np.ndarray) -> int:
@@ -54,10 +55,12 @@ def _stationarity_d(series: np.ndarray) -> int:
 def _arima_forecast(series: np.ndarray, cfg: ForecastConfig, horizon: int) -> ClusterForecast:
     from statsmodels.tsa.arima.model import ARIMA
 
+    mean = float(np.mean(series))
     mean_fallback = ClusterForecast(
-        expected_return=float(np.mean(series) * horizon),
+        expected_return=mean * horizon,
         model="historical_mean",
         fallback=True,
+        path=[mean * k for k in range(1, horizon + 1)],
     )
     if series.size < 30 or np.allclose(series, series[0]):
         return mean_fallback
@@ -81,12 +84,13 @@ def _arima_forecast(series: np.ndarray, cfg: ForecastConfig, horizon: int) -> Cl
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            steps = best.forecast(steps=horizon)
+            steps = np.asarray(best.forecast(steps=horizon), dtype=float)
         return ClusterForecast(
-            expected_return=float(np.sum(np.asarray(steps, dtype=float))),
+            expected_return=float(np.sum(steps)),
             model="arima",
             order=best_order,
             fallback=False,
+            path=np.cumsum(steps).tolist(),
         )
     except Exception:
         return mean_fallback
@@ -95,8 +99,12 @@ def _arima_forecast(series: np.ndarray, cfg: ForecastConfig, horizon: int) -> Cl
 def _spline_forecast(series: np.ndarray, horizon: int) -> ClusterForecast:
     from scipy.interpolate import UnivariateSpline
 
+    mean = float(np.mean(series))
     mean_fallback = ClusterForecast(
-        expected_return=float(np.mean(series) * horizon), model="historical_mean", fallback=True
+        expected_return=mean * horizon,
+        model="historical_mean",
+        fallback=True,
+        path=[mean * k for k in range(1, horizon + 1)],
     )
     if series.size < 30 or np.allclose(series, series[0]):
         return mean_fallback
@@ -106,7 +114,12 @@ def _spline_forecast(series: np.ndarray, horizon: int) -> ClusterForecast:
         spline = UnivariateSpline(x, cum, k=3, s=len(x))
         future = np.arange(cum.size, cum.size + horizon, dtype=float)
         step = spline(future) - spline(np.array([cum.size - 1.0]))
-        return ClusterForecast(expected_return=float(step[-1]), model="spline", fallback=False)
+        return ClusterForecast(
+            expected_return=float(step[-1]),
+            model="spline",
+            fallback=False,
+            path=np.asarray(step, dtype=float).tolist(),
+        )
     except Exception:
         return mean_fallback
 
