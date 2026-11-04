@@ -57,7 +57,3 @@ returns are only weakly predictable, the forecast is reported as a modest signal
 horizon, and limitations — survivorship, window sensitivity and weak predictability — are
 documented rather than hidden.
 
-## Team Members
-
-- Mohamed Aashir S — 22PT17
-- Kiruthika V G — 21PT10

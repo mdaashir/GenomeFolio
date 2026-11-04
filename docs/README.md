@@ -12,14 +12,8 @@ Documentation for the GenomeFolio package (20XT96 - Mathematical Modelling Lab).
 - [System Architecture](architecture.md) — modules, data flow, config schema and tests. PDF: `pdf/architecture.pdf`
 - [Configuration Reference](configuration.md) — every parameter and its meaning. PDF: `pdf/configuration.pdf`
 
-## Building the PDFs
+## PDF copies
 
 The PDF versions reuse the Mathematical Modelling Lab abstract template (A4, Times New
-Roman 12pt, centred lab header, `Team members:` line, bold section headings). Each Markdown
-file is rendered to `docs/pdf/<name>.pdf` with:
-
-```
-uv run --with reportlab python docs/build_pdfs.py
-```
-
-The original lab abstract is kept for reference at `pdf/Abstract_original_template.pdf`.
+Roman 12pt, centred lab header, `Team members:` line, bold section headings) and are kept in
+`docs/pdf/` alongside the Markdown sources.

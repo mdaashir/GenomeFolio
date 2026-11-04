@@ -47,12 +47,6 @@ Full documentation lives in `docs/`, in Markdown with matching PDFs in `docs/pdf
 - `docs/architecture.md` — `docs/pdf/architecture.pdf`
 - `docs/configuration.md` — `docs/pdf/configuration.pdf`
 
-Rebuild the PDFs with:
-
-```
-uv run --with reportlab python docs/build_pdfs.py
-```
-
 ## Layout
 
 ```
