@@ -17,6 +17,9 @@ Sequence-alignment clustering of stock return patterns, followed by a per-cluste
 
 Test suite: `uv run pytest`. Run: `uv run genomefolio --use-fixture`.
 
+Documentation: `docs/` contains abstract, explanation, demo, architecture and configuration
+guides, each in Markdown with a matching PDF in `docs/pdf/`.
+
 ## Removed in the "present" simplification
 
 The circular-shift null gate, the two-stage portfolio, the rolling update, the walk-forward

@@ -36,6 +36,23 @@ uv run genomefolio --use-fixture --out forecasts.json
 uv run pytest
 ```
 
+## Documentation
+
+Full documentation lives in `docs/`, in Markdown with matching PDFs in `docs/pdf/`
+(rendered with the Data Mining Lab abstract template):
+
+- `docs/abstract.md` — `docs/pdf/abstract.pdf`
+- `docs/explanation.md` — `docs/pdf/explanation.pdf`
+- `docs/demo.md` — `docs/pdf/demo.pdf`
+- `docs/architecture.md` — `docs/pdf/architecture.pdf`
+- `docs/configuration.md` — `docs/pdf/configuration.pdf`
+
+Rebuild the PDFs with:
+
+```
+uv run --with reportlab python docs/build_pdfs.py
+```
+
 ## Layout
 
 ```
