@@ -1,19 +1,15 @@
 # GenomeFolio
 
-Sequence-alignment clustering of stock return patterns, with a forecast-tilted,
-diversified walk-forward portfolio and a bias-aware backtest.
+Sequence-alignment clustering of stock return patterns, followed by a per-cluster forecast.
 
-Stocks' daily returns are symbolised into a 5-symbol alphabet, aligned pairwise with
-**banded global alignment** (Needleman-Wunsch, affine gaps, graded substitution matrix),
-turned into a normalised distance, and clustered with **hierarchical average linkage**
-under a **constrained k** rule. A **circular-shift null gate** checks that clustering
-beats chance. Clusters feed a **two-stage diversified portfolio** (allocate across
-clusters, then within them under per-stock caps), lightly tilted by a per-cluster ARIMA
-forecast, rebalanced monthly in a walk-forward backtest that charges turnover and
-reports **paired block-bootstrap** confidence intervals against several baselines.
+Stocks' daily returns are symbolised into a 5-symbol alphabet over a training window, aligned
+pairwise with **banded global alignment** (Needleman-Wunsch, affine gaps, graded substitution
+matrix), turned into a normalised distance, and clustered with **hierarchical average linkage**
+under a **constrained k** rule. Each cluster's equal-weight composite return is then
+**forecast** over the coming horizon (ARIMA or spline).
 
-See `AGENTS.md` for the project brief and `PROGRESS.md` for decisions, caveats and
-results.
+The pipeline stops at the forecast: there is **no circular-shift null gate** and **no
+portfolio / walk-forward backtest** downstream.
 
 ## Setup
 
@@ -25,13 +21,13 @@ uv sync
 
 ```
 # Full dataset (downloads/caches prices on first run)
-uv run python -m src.backtest
+uv run genomefolio
 
-# Offline smoke run on the committed 10-stock fixture
-uv run python -m src.backtest --use-fixture --draws 30
+# Offline run on the committed 10-stock fixture
+uv run genomefolio --use-fixture
 
-# Only the band-sweep stability report
-uv run python -m src.backtest --use-fixture --band-only
+# Write clusters + forecasts to JSON
+uv run genomefolio --use-fixture --out forecasts.json
 ```
 
 ## Tests
@@ -43,8 +39,8 @@ uv run pytest
 ## Layout
 
 ```
-config/    params.yaml, sectors.yaml (all knobs; nothing hardcoded)
-src/       data, symbolize, align, cluster, null_test, forecast, portfolio, rolling, backtest
+config/    params.yaml (all knobs; nothing hardcoded)
+src/       config, data, symbolize, align, cluster, forecast, pipeline, cli
 tests/     pytest suite per module
 notebooks/ exploration only
 data/      gitignored raw/cache; data/sample/ is the committed offline fixture

@@ -1,9 +1,8 @@
 # GenomeFolio — Progress
 
-Sequence-alignment clustering of financial return patterns → diversified, walk-forward
-portfolio with a bias-aware backtest.
+Sequence-alignment clustering of stock return patterns, followed by a per-cluster forecast.
 
-**Consolidated report: `reports/REPORT.md`.**
+**Pipeline:** data → symbolize → align → cluster → **forecast** (stops here).
 
 ## Pipeline status
 
@@ -13,54 +12,38 @@ portfolio with a bias-aware backtest.
 | 2. Symbolization (5-symbol alphabet) | `src/symbolize.py` | done, tested |
 | 3. Alignment (banded NW, affine gaps) | `src/align.py` | done, tested |
 | 4. Clustering (constrained k, band sweep) | `src/cluster.py` | done, tested |
-| 5. Shuffled-null gate (circular shift) | `src/null_test.py` | done, tested |
-| 6. Forecast (per-cluster ARIMA) | `src/forecast.py` | done, tested |
-| 7. Portfolio (two-stage + caps) | `src/portfolio.py` | done, tested |
-| 8. Rolling update | `src/rolling.py` | done |
-| 9. Backtest + metrics + bootstrap | `src/backtest.py` | done, tested |
-| — Evaluation / write-up | `reports/RESULTS.md`, this file | done |
+| 5. Forecast (per-cluster ARIMA/spline) | `src/forecast.py` | done, tested |
+| — Orchestration / CLI | `src/pipeline.py`, `src/cli.py` | done, tested |
 
-Test suite: `uv run pytest` (60 tests). Smoke run:
-`uv run python -m src.backtest --use-fixture --draws 30`.
+Test suite: `uv run pytest`. Run: `uv run genomefolio --use-fixture`.
+
+## Removed in the "present" simplification
+
+The circular-shift null gate, the two-stage portfolio, the rolling update, the walk-forward
+backtest, transaction-cost and evaluation helpers, all experiments/reports that depended on
+them, and `config/sectors.yaml`. The pipeline now goes **straight from clustering to the
+forecast** — no gate decision, no allocation, no backtest.
 
 ## Parameters chosen and why
 
 All in `config/params.yaml`; nothing hardcoded.
 
 - **Universe**: 20 fixed cross-sector US large-caps, 10+ year history. Fixed universe →
-  **survivorship bias is documented, not hidden** (the names that survived to today are
-  the ones we test).
+  **survivorship bias is documented, not hidden**.
 - **Symbolization**: per-stock **20/40/60/80** training-window quantiles → 5 symbols.
   Per-stock normalisation strips each stock's own volatility, so strings encode *when*
   moves happen (shape/timing), not how big — deliberate, since the goal is pattern
-  similarity, not correlation. Ablations: **15/35/65/85** cutoffs and **market-neutral**
-  returns (stock − equal-weight universe).
+  similarity, not correlation.
 - **Alignment**: graded matrix (`+2` match, else `−|ord(s) − ord(t)|`), **affine gaps**
-  (open −1.0 / extend −0.4), **band w = 5**. The band lets a pattern shift a few days but
-  hard-stops pairing unrelated days. Sweep **w ∈ {2, 5, 10}** for stability.
+  (open −1.0 / extend −0.4), **band w = 5** (lets a pattern shift a few days, hard-stops
+  unrelated pairings). `band_sweep = [2, 5, 10]` for stability checks.
 - **Distance**: raw score normalised by the two self-scores (`1 − s/√(self_i·self_j)`).
-  **Not claimed to be a metric** — asserted symmetric and non-negative only; average
-  linkage needs no metric.
+  **Not claimed to be a metric** — asserted symmetric and non-negative only.
 - **Clustering**: hierarchical **average** linkage; k by silhouette over
-  `[2, min(6, floor(N/3))]` with **min cluster size 3** (silhouette favours k = 2 with
-  ~20 stocks otherwise).
-- **Null gate**: real silhouette must beat the **95th percentile** of **circular-shift**
-  null silhouettes, with the null run through the **same constrained k selection**.
-  Circular shifts (> band) preserve each string's autocorrelation and volatility
-  clustering and break only cross-stock alignment — an i.i.d. shuffle destroys both and
-  makes the null too easy to beat. Per-pair **BH-FDR is a diagnostic only**.
-- **Forecast**: per-cluster ARIMA forecasting the **~21-day cumulative** return (matches
-  the monthly rebalance), order by AIC over `p, q ≤ 2`, `d` from an ADF test on the
-  training window; falls back to the historical mean if no fit converges. Treated as a
-  **modest tilt only** — daily returns are weakly predictable.
-- **Portfolio**: two-stage — across clusters (equal / risk-parity / light forecast tilt),
-  then within cluster (equal / inverse-vol), under **cap = max(10%, 1.5/N)**.
-- **Costs**: **turnover = Σ|Δw|** (total traded weight, buys plus sells); cost =
-  **10 bps × turnover**; sweep **0 → 25 bps**.
-- **Bootstrap**: **paired** block bootstrap (same resampled blocks for method and
-  baseline), block ≈ 20 days (or Politis-White), 5,000 resamples, 95% CIs.
-- **No data-snooping**: tune on the first ~70% of history, report on the untouched last
-  ~30% (full dataset only; the fixture runs with the split disabled).
+  `[2, min(6, floor(N/3))]` with **min cluster size 3**.
+- **Forecast**: per-cluster ARIMA on the equal-weight composite, forecasting the
+  **~21-day cumulative** return; order by AIC over `p, q ≤ 2`, `d` from an ADF test on the
+  training window; falls back to the historical mean if no fit converges.
 
 ## Design decisions (for the report)
 
@@ -70,104 +53,22 @@ All in `config/params.yaml`; nothing hardcoded.
   volatility; discards magnitude on purpose.
 - **Why a graded matrix**: near-misses (big-up vs small-up) should cost less than
   opposites (big-up vs big-down).
-- **Why two-stage allocation**: with 15–25 stocks a single global optimiser mostly
-  amplifies covariance-estimation noise; two-stage keeps "mix across clusters" central.
-- **Why the null gate**: guards against clustering pure noise; the pass fraction is read
-  against the ~5% chance rate.
+- **Why stop at the forecast**: the forecast horizon is explicit and testable; turning it
+  into portfolios/backtests is out of scope for this version.
 
 ## Known issues / caveats
 
-- **Backtest ≠ proof.** Results are one path through history on a fixed universe; flag
-  overfitting and look-ahead wherever relevant.
-- **Post-split period is short** (~30% of 10+ years ≈ 2.5–3 years, ~30 rebalances), so
-  the block-bootstrap CIs are **wide**.
-- **Gate pass fraction runs far above 5%**: 0.90 on the full run (and ~0.49 on the
-  fixture). Equities share a market factor, so real cross-stock similarity beats a null
-  that removes only cross-alignment. It means "similarity exists", not "clusters add
-  value" — the gate provides almost no protection here.
-- **Alignment O(n²) per pair**: numba-accelerated; the DP still allocates full
-  `(n+1)²` matrices, so keep windows at the configured 252 days. The null gate cost is
-  controlled by the draw count (~200 tuning / ~1000 reported).
-- **ARIMA on daily returns is close to the mean**; the forecast is a small tilt, not a
-  signal.
-
-## Results (full run)
-
-20 stocks, 3020 days, report period 906 days (~31 rebalances), 1000 gate draws, 10 bps.
-Full tables and interpretation in `reports/RESULTS.md`.
-
-**Negative result.** The alignment portfolio had the **lowest Sharpe of all seven methods**
-(0.33 vs equal-weight 0.75, mean-variance 0.92), and the paired block bootstrap shows it is
-**significantly worse** than equal-weight, mean-variance, random same-size clusters and
-sector clusters (CIs exclude 0). Random groupings of the *same sizes* through the *same
-two-stage allocation* beat the alignment groupings, so it is the alignment itself that
-hurts. Clusters were unstable across bands (ARI 0.07–0.40) and the gate passed 90% of the
-time.
-
-## Follow-up experiments
-
-`uv run python scripts/run_experiments.py` — full tables in `reports/EXPERIMENTS.md`.
-
-- **Bug fixed:** `risk_parity` was silently ignored whenever forecasts were absent (the
-  `forecasts is None` guard in `_cluster_first_stage` forced equal). Fixed with regression
-  tests.
-- **Concentration is a small effect, not the cause.** risk-parity + inverse-vol moves
-  Sharpe 0.332 → 0.379, still far below equal weight (0.746); CI still excludes 0.
-- **The alignment distance is the weak link.** Same constrained-k clustering and allocator
-  on **correlation** distance reaches 0.506–0.530 and is *indistinguishable from equal
-  weight* — the clustering machinery and allocator are fine; the alignment similarity is
-  what hurts.
-- The forecast tilt is the best alignment variant (0.476) but is still marginally worse.
-
-## Symbolization ablations
-
-`uv run python scripts/run_symbolize_ablations.py [report|tune]` — full tables in
-`reports/ABLATIONS.md`.
-
-- **Magnitude-aware symbolization (pooled quantiles) beats per-stock in both periods**
-  (report 0.669 vs 0.421; tune 0.882 vs 0.863) — directionally consistent, size unstable.
-- **The report-period "winner" does not replicate.** `per_stock_mnl` looked best on the
-  report period (0.869, above equal weight) but sits *below* equal weight on the tune period
-  (0.904 vs 0.946); the top variant flips → multiple-comparisons artefact.
-- **No variant beats equal weight significantly** in either period (all CIs include 0).
-  `pooled_mnl` is the only one above equal weight in both, by ~0.02–0.03 Sharpe.
-- Refines `EXPERIMENTS.md`: with magnitude-aware symbolization, alignment (0.67–0.78) beats
-  correlation (0.53), so the weak link was the *magnitude-discarding* per-stock
-  symbolization, not alignment per se.
-
-## Pre-registered holdout
-
-`uv run python scripts/run_holdout_eval.py` — spec in `reports/PREREGISTRATION.md`,
-result in `reports/HOLDOUT.md`.
-
-- Disjoint 20-stock universe, 131 rebalances, one frozen confirmatory test.
-- **H1 (pooled_mnl Sharpe > equal weight) NOT SUPPORTED**: Sharpe-diff 95% CI
-  (-0.064, 0.107) includes 0.
-- `per_stock` (1.065) and `pooled_mnl` (1.059) are statistically tied; equal weight 1.039.
-- **Conclusion: no symbolization reliably beats equal weight.** The report-period win did
-  not survive the holdout — exactly as the replication check predicted.
-
-## Time-disjoint OOS
-
-`uv run python scripts/run_time_oos.py` — spec `reports/PREREGISTRATION_TIME.md`, result
-`reports/TIME_OOS.md`.
-
-- Original universe, 2005-2012 (includes 2008), 83 rebalances. **H2 NOT SUPPORTED**:
-  Sharpe-diff 95% CI (-0.006, 0.141) includes 0.
-- **Pattern: `pooled_mnl` beats equal weight in all four evaluations** (report +0.030,
-  tune +0.021, holdout universe +0.020, time OOS +0.068) but **never significantly**.
-  Consistent sign, underpowered.
-- Conclusion unchanged: no confirmed beat. Magnitude-aware, market-neutral symbolization is
-  directionally (not significantly) better across four tests; the run is underpowered, not
-  the method proven worthless.
+- **Forecasts are not proof.** Daily returns are weakly predictable; ARIMA is close to the
+  mean, so report every forecast with its horizon and treat it as a modest signal.
+- **Window choice matters**: symbols and thresholds use only the trailing training window;
+  a different window yields different clusters.
+- **Cluster count is band-sensitive**: check the band sweep / silhouette before trusting a
+  single configuration.
+- **Survivorship bias**: the fixed universe contains names that survived to today.
+- **No look-ahead**: every stage at time *t* uses only data up to *t*.
 
 ## Next steps
 
-1. Increase power (more stocks, longer history, international universes) to test whether
-   the small consistent edge is real.
-2. Reduce the specification search: freeze one symbolization + allocator and evaluate only
-   on fresh universes/periods — the pre-registration template is in `reports/`.
-
-**Done:** full Politis–White automatic block-length selection (`politis_white_block_length`);
-sensitivity re-run closes nothing out — both OOS CIs still include 0 (block 42 → (-0.003, 0.140);
-block 52 → (-0.061, 0.102)). See `reports/REPORT.md` §4.
+1. Evaluate forecast accuracy out of sample (hold out the last ~30% via `split`).
+2. Sweep symbolization cutoffs and the band width and report cluster stability.
+3. Consider richer symbolization (rolling z-score) if patterns look regime-dependent.
