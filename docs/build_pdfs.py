@@ -1,8 +1,9 @@
 """Build the PDF copies of the documentation.
 
-Uses the same template as the Data Mining Lab package abstract: A4, Times New Roman 12pt,
-a bold centred lab header and document label, a "Team members:" line, bold section headings,
-left-aligned 1.5-spaced body text, indented lists and monospaced code blocks.
+Uses the same template as the Mathematical Modelling Lab package abstract: A4, Times New
+Roman 12pt, a bold centred lab header and document label, a "Team members:" line, bold
+section headings, left-aligned 1.5-spaced body text, indented lists and monospaced code
+blocks.
 
 Run (reportlab is only needed for this build step):
 
@@ -30,7 +31,7 @@ from reportlab.platypus import (
 
 DOCS = Path(__file__).resolve().parent
 OUT = DOCS / "pdf"
-LAB = "20XT87 - DATA MINING LAB"
+LAB = "20XT96 - MATHEMATICAL MODELLING LAB"
 TEAM = "22PT17 - Mohamed Aashir S, 21PT10 - Kiruthika V G"
 FILES = ["abstract.md", "explanation.md", "demo.md", "architecture.md", "configuration.md"]
 

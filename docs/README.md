@@ -1,6 +1,6 @@
 # GenomeFolio Documentation
 
-Documentation for the GenomeFolio package (20XT87 - Data Mining Lab).
+Documentation for the GenomeFolio package (20XT96 - Mathematical Modelling Lab).
 
 **Authors:** Mohamed Aashir S (22PT17) and Kiruthika V G (21PT10)
 
@@ -14,9 +14,9 @@ Documentation for the GenomeFolio package (20XT87 - Data Mining Lab).
 
 ## Building the PDFs
 
-The PDF versions reuse the Data Mining Lab abstract template (A4, Times New Roman 12pt,
-centred lab header, `Team members:` line, bold section headings). Each Markdown file is
-rendered to `docs/pdf/<name>.pdf` with:
+The PDF versions reuse the Mathematical Modelling Lab abstract template (A4, Times New
+Roman 12pt, centred lab header, `Team members:` line, bold section headings). Each Markdown
+file is rendered to `docs/pdf/<name>.pdf` with:
 
 ```
 uv run --with reportlab python docs/build_pdfs.py

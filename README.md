@@ -39,7 +39,7 @@ uv run pytest
 ## Documentation
 
 Full documentation lives in `docs/`, in Markdown with matching PDFs in `docs/pdf/`
-(rendered with the Data Mining Lab abstract template):
+(rendered with the Mathematical Modelling Lab abstract template):
 
 - `docs/abstract.md` — `docs/pdf/abstract.pdf`
 - `docs/explanation.md` — `docs/pdf/explanation.pdf`
