@@ -5,9 +5,7 @@ Hierarchical average linkage (UPGMA) on the normalised alignment distance, with 
 ``[k_min, min(k_max, floor(N / divisor))]`` subject to **every cluster having at least
 ``min_cluster_size`` members** (silhouette otherwise favours k = 2 with ~20 stocks).
 
-``select_constrained_k`` is the single source of truth for the k-selection rule; the
-null gate (``src/null_test.py``) reuses it so the real and null clusterings are treated
-identically.
+``select_constrained_k`` is the single source of truth for the k-selection rule.
 
 Also provides a **band sweep** (re-cluster at several band widths) plus Adjusted Rand
 Index stability, so the chosen solution is not an artefact of one band.

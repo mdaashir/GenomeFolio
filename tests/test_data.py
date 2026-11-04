@@ -18,8 +18,8 @@ def test_fixture_size_and_history():
     assert prices.shape[1] >= 8, "fixture must have >= 8 stocks"
     years = (prices.index.max() - prices.index.min()).days / 365.25
     assert years >= 3, "fixture must span >= 3 years"
-    # enough history for a 252-day window plus several monthly rebalances
-    assert len(prices) >= cfg.window.train_days + 6 * cfg.window.rebalance_days
+    # enough history for the training window plus a forecast horizon
+    assert len(prices) >= cfg.window.train_days + cfg.window.forecast_horizon
 
 
 def test_returns_have_no_nan_after_alignment():

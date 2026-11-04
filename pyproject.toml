@@ -16,6 +16,9 @@ dependencies = [
     "yfinance>=0.2.40",
 ]
 
+[project.scripts]
+genomefolio = "src.cli:cli"
+
 [dependency-groups]
 dev = ["pytest>=8.0"]
 

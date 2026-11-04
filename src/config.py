@@ -1,18 +1,15 @@
 """Typed configuration loader.
 
-All parameters live in ``config/params.yaml`` (and ``config/sectors.yaml``); this
-module turns them into frozen dataclasses so nothing downstream is hardcoded.
+All parameters live in ``config/params.yaml``; this module turns them into frozen
+dataclasses so nothing downstream is hardcoded.
 
-Inputs: a path to a YAML file (defaults to ``config/params.yaml`` relative to the
-repo root).
-Outputs: a :class:`Config` (and, for :func:`load_sectors`, a ticker -> group map).
-Assumptions: the YAML schema matches the dataclasses below; values are validated
-here so bad config fails fast and loudly.
+The pipeline is data -> symbolize -> align -> cluster -> forecast.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -20,11 +17,8 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PARAMS_PATH = REPO_ROOT / "config" / "params.yaml"
-DEFAULT_SECTORS_PATH = REPO_ROOT / "config" / "sectors.yaml"
 
-
-def _tuple(values: Any) -> tuple:
-    return tuple(values) if values is not None else ()
+_SCIPY_LINKAGES = {"single", "complete", "average", "weighted", "centroid", "median", "ward"}
 
 
 @dataclass(frozen=True)
@@ -75,17 +69,8 @@ class ClusterConfig:
 
 
 @dataclass(frozen=True)
-class NullTestConfig:
-    gate_percentile: float
-    n_draws_tuning: int
-    n_draws_report: int
-    fdr_alpha: float
-
-
-@dataclass(frozen=True)
 class WindowConfig:
     train_days: int
-    rebalance_days: int
     forecast_horizon: int
 
 
@@ -99,42 +84,6 @@ class ForecastConfig:
 
 
 @dataclass(frozen=True)
-class PortfolioConfig:
-    cluster_method: str
-    within_cluster: str
-    cap_floor: float
-    cap_factor: float
-    forecast_tilt_strength: float
-
-    def cap(self, n: int) -> float:
-        """Per-stock weight cap ``max(cap_floor, cap_factor / n)``.
-
-        The floor alone (e.g. 10%) is infeasible for small universes: 8 x 10% = 80%
-        leaves no fully invested portfolio, so the factor term lifts it when needed.
-        """
-        return max(self.cap_floor, self.cap_factor / n)
-
-
-@dataclass(frozen=True)
-class CostsConfig:
-    base_bps: float
-    sweep_bps: tuple[float, ...]
-
-
-@dataclass(frozen=True)
-class BootstrapConfig:
-    block_length: int
-    use_politis_white: bool
-    n_resamples: int
-    confidence: float
-
-
-@dataclass(frozen=True)
-class BacktestConfig:
-    gate_passed_only_descriptive: bool
-
-
-@dataclass(frozen=True)
 class Config:
     seed: int
     universe: UniverseConfig
@@ -142,13 +91,8 @@ class Config:
     symbolize: SymbolizeConfig
     align: AlignConfig
     cluster: ClusterConfig
-    null_test: NullTestConfig
     window: WindowConfig
     forecast: ForecastConfig
-    portfolio: PortfolioConfig
-    costs: CostsConfig
-    bootstrap: BootstrapConfig
-    backtest: BacktestConfig
     source_path: str = field(default="", compare=False)
 
 
@@ -162,10 +106,10 @@ def load_config(path: str | Path | None = None) -> Config:
     """Load and validate parameters from YAML.
 
     Returns a :class:`Config`. Raises ``ValueError`` on out-of-range or inconsistent
-    values so misconfiguration surfaces at startup rather than mid-backtest.
+    values so misconfiguration surfaces at startup rather than mid-run.
     """
     path = Path(path) if path is not None else DEFAULT_PARAMS_PATH
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(path, encoding="utf-8") as fh:
         raw = yaml.safe_load(fh)
 
     u = _section(raw, "universe")
@@ -173,13 +117,8 @@ def load_config(path: str | Path | None = None) -> Config:
     sy = _section(raw, "symbolize")
     al = _section(raw, "align")
     cl = _section(raw, "cluster")
-    nt = _section(raw, "null_test")
     w = _section(raw, "window")
     fo = _section(raw, "forecast")
-    po = _section(raw, "portfolio")
-    co = _section(raw, "costs")
-    bo = _section(raw, "bootstrap")
-    bt = _section(raw, "backtest")
 
     cfg = Config(
         seed=int(raw["seed"]),
@@ -213,15 +152,8 @@ def load_config(path: str | Path | None = None) -> Config:
             k_cap_divisor=int(cl["k_cap_divisor"]),
             min_cluster_size=int(cl["min_cluster_size"]),
         ),
-        null_test=NullTestConfig(
-            gate_percentile=float(nt["gate_percentile"]),
-            n_draws_tuning=int(nt["n_draws_tuning"]),
-            n_draws_report=int(nt["n_draws_report"]),
-            fdr_alpha=float(nt["fdr_alpha"]),
-        ),
         window=WindowConfig(
             train_days=int(w["train_days"]),
-            rebalance_days=int(w["rebalance_days"]),
             forecast_horizon=int(w["forecast_horizon"]),
         ),
         forecast=ForecastConfig(
@@ -230,26 +162,6 @@ def load_config(path: str | Path | None = None) -> Config:
             max_q=int(fo["max_q"]),
             seasonal=bool(fo["seasonal"]),
             fallback=str(fo["fallback"]),
-        ),
-        portfolio=PortfolioConfig(
-            cluster_method=str(po["cluster_method"]),
-            within_cluster=str(po["within_cluster"]),
-            cap_floor=float(po["cap_floor"]),
-            cap_factor=float(po["cap_factor"]),
-            forecast_tilt_strength=float(po["forecast_tilt_strength"]),
-        ),
-        costs=CostsConfig(
-            base_bps=float(co["base_bps"]),
-            sweep_bps=tuple(float(b) for b in co["sweep_bps"]),
-        ),
-        bootstrap=BootstrapConfig(
-            block_length=int(bo["block_length"]),
-            use_politis_white=bool(bo["use_politis_white"]),
-            n_resamples=int(bo["n_resamples"]),
-            confidence=float(bo["confidence"]),
-        ),
-        backtest=BacktestConfig(
-            gate_passed_only_descriptive=bool(bt["gate_passed_only_descriptive"]),
         ),
         source_path=str(path),
     )
@@ -260,6 +172,14 @@ def load_config(path: str | Path | None = None) -> Config:
 def _validate(cfg: Config) -> None:
     if not cfg.universe.tickers:
         raise ValueError("universe.tickers must not be empty")
+    if len(set(cfg.universe.tickers)) != len(cfg.universe.tickers):
+        raise ValueError("universe.tickers must be unique")
+    try:
+        start, end = date.fromisoformat(cfg.universe.start), date.fromisoformat(cfg.universe.end)
+    except ValueError as exc:
+        raise ValueError("universe.start/end must be ISO dates (YYYY-MM-DD)") from exc
+    if start >= end:
+        raise ValueError("universe.start must be before universe.end")
     for name, cut in (
         ("symbolize.cutoffs", cfg.symbolize.cutoffs),
         ("symbolize.cutoffs_ablation", cfg.symbolize.cutoffs_ablation),
@@ -268,6 +188,16 @@ def _validate(cfg: Config) -> None:
             raise ValueError(f"{name} must have exactly 4 cutoffs for the 5-symbol alphabet")
         if list(cut) != sorted(cut) or not all(0.0 < c < 1.0 for c in cut):
             raise ValueError(f"{name} must be strictly increasing and inside (0, 1)")
+    if cfg.symbolize.quantile_scope not in {"per_stock", "pooled"}:
+        raise ValueError("symbolize.quantile_scope must be per_stock|pooled")
+    if cfg.align.match_score <= 0:
+        raise ValueError("align.match_score must be > 0")
+    if cfg.align.band < 0:
+        raise ValueError("align.band must be >= 0")
+    if cfg.align.band_sweep and min(cfg.align.band_sweep) < 0:
+        raise ValueError("align.band_sweep entries must be >= 0")
+    if cfg.cluster.linkage not in _SCIPY_LINKAGES:
+        raise ValueError(f"cluster.linkage must be one of {sorted(_SCIPY_LINKAGES)}")
     if cfg.cluster.k_min < 2:
         raise ValueError("cluster.k_min must be >= 2")
     if cfg.cluster.k_max < cfg.cluster.k_min:
@@ -276,39 +206,9 @@ def _validate(cfg: Config) -> None:
         raise ValueError("cluster.k_cap_divisor must be >= 1")
     if cfg.cluster.min_cluster_size < 2:
         raise ValueError("cluster.min_cluster_size must be >= 2")
-    if cfg.align.band < 0:
-        raise ValueError("align.band must be >= 0")
     if not (0.0 < cfg.split.tune_fraction < 1.0):
         raise ValueError("split.tune_fraction must be inside (0, 1)")
-    if not (0.0 < cfg.null_test.gate_percentile < 100.0):
-        raise ValueError("null_test.gate_percentile must be inside (0, 100)")
-    if cfg.portfolio.cluster_method not in {"equal", "risk_parity", "forecast_tilt"}:
-        raise ValueError("portfolio.cluster_method must be equal|risk_parity|forecast_tilt")
-    if cfg.symbolize.quantile_scope not in {"per_stock", "pooled"}:
-        raise ValueError("symbolize.quantile_scope must be per_stock|pooled")
-    if cfg.portfolio.within_cluster not in {"equal", "inverse_vol"}:
-        raise ValueError("portfolio.within_cluster must be equal|inverse_vol")
-    if cfg.costs.base_bps < 0:
-        raise ValueError("costs.base_bps must be >= 0")
-    if not (0.0 < cfg.bootstrap.confidence < 1.0):
-        raise ValueError("bootstrap.confidence must be inside (0, 1)")
-
-
-def load_sectors(path: str | Path | None = None) -> dict[str, tuple[str, ...]]:
-    """Load the ticker -> sector-group mapping used by the sector-cluster control.
-
-    Returns a dict of group name -> tuple of tickers. Raises ``ValueError`` if any
-    group has fewer than 3 stocks or there are not 3-6 groups, so the control obeys
-    the same size rules as the alignment clusters.
-    """
-    path = Path(path) if path is not None else DEFAULT_SECTORS_PATH
-    with open(path, "r", encoding="utf-8") as fh:
-        raw = yaml.safe_load(fh)
-    sectors = _section(raw, "sectors")
-    groups = {str(k): tuple(v) for k, v in sectors.items()}
-    if not (3 <= len(groups) <= 6):
-        raise ValueError(f"sectors.yaml must define 3-6 groups, got {len(groups)}")
-    for name, members in groups.items():
-        if len(members) < 3:
-            raise ValueError(f"sector group '{name}' has {len(members)} stocks (< 3)")
-    return groups
+    if cfg.window.train_days < 1 or cfg.window.forecast_horizon < 1:
+        raise ValueError("window.train_days and forecast_horizon must be >= 1")
+    if cfg.forecast.model not in {"arima", "spline"}:
+        raise ValueError("forecast.model must be arima|spline")

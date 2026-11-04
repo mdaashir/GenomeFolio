@@ -1,7 +1,7 @@
 import pytest
 import yaml
 
-from src.config import Config, load_config, load_sectors
+from src.config import Config, load_config
 
 
 def test_load_default_config():
@@ -11,6 +11,7 @@ def test_load_default_config():
     assert len(cfg.symbolize.cutoffs) == 4
     assert cfg.cluster.k_min >= 2
     assert cfg.window.train_days > 0
+    assert cfg.window.forecast_horizon > 0
 
 
 def test_k_cap_formula():
@@ -19,27 +20,6 @@ def test_k_cap_formula():
     assert cfg.cluster.k_cap(20) == 6
     assert cfg.cluster.k_cap(10) == 3
     assert cfg.cluster.k_cap(8) == 2
-
-
-def test_cap_formula():
-    cfg = load_config()
-    # cap = max(cap_floor, cap_factor / N)
-    assert cfg.portfolio.cap(20) == pytest.approx(0.10)
-    assert cfg.portfolio.cap(8) == pytest.approx(0.1875)
-
-
-def test_sector_groups_obey_size_rules():
-    sectors = load_sectors()
-    assert 3 <= len(sectors) <= 6
-    for members in sectors.values():
-        assert len(members) >= 3
-
-
-def test_sectors_cover_universe():
-    cfg = load_config()
-    sectors = load_sectors()
-    covered = {t for members in sectors.values() for t in members}
-    assert set(cfg.universe.tickers) == covered
 
 
 def test_invalid_cutoffs_rejected(tmp_path):
@@ -75,6 +55,27 @@ def test_quantile_scope_default_and_validation(tmp_path):
     data = yaml.safe_load(open("config/params.yaml", encoding="utf-8"))
     data["symbolize"]["quantile_scope"] = "bogus"
     path = tmp_path / "badscope.yaml"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_config(path)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda d: d["window"].__setitem__("train_days", 0),
+        lambda d: d["window"].__setitem__("forecast_horizon", 0),
+        lambda d: d["forecast"].__setitem__("model", "bogus"),
+        lambda d: d["align"].__setitem__("match_score", 0.0),
+        lambda d: d["cluster"].__setitem__("linkage", "bogus"),
+        lambda d: d["universe"].__setitem__("tickers", ["AAPL", "AAPL"]),
+        lambda d: d["universe"].__setitem__("start", "2025-01-01"),
+    ],
+)
+def test_invalid_config_values_rejected(tmp_path, mutate):
+    data = yaml.safe_load(open("config/params.yaml", encoding="utf-8"))
+    mutate(data)
+    path = tmp_path / "bad.yaml"
     path.write_text(yaml.safe_dump(data), encoding="utf-8")
     with pytest.raises(ValueError):
         load_config(path)
