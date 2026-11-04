@@ -12,10 +12,11 @@ for reproducibility of any future stochastic step.
 ## universe
 
 - `tickers` — the fixed stock universe (20 cross-sector US large-caps by default).
-- `start`, `end` — ISO dates for the download range (`2013-01-01`, `2025-01-01`).
+- `start`, `end` — ISO dates for the download range (`2013-01-01`, `2019-01-01`; yfinance's
+  end date is exclusive, so this covers 2013–2018).
 - `cache_dir` — where downloaded prices are cached (`data/cache`). Gitignored.
 - `fixture_path` — the committed offline sample (`data/sample/prices.csv`).
-- `min_history_years` — a documented expectation for the history length (10).
+- `min_history_years` — a documented expectation for the history length (6).
 
 ## split
 

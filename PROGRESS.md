@@ -22,7 +22,7 @@ guides, each in Markdown with a matching PDF in `docs/pdf/`.
 
 UI: `app.py` is a Streamlit app that runs the pipeline and shows every phase (data,
 symbolization, raw scores, pairwise distance, clustering, forecast) with graphs and tables.
-Run it with `uv run --group ui streamlit run app.py`.
+Run it with `uv run streamlit run app.py`.
 
 ## Removed in the "present" simplification
 
@@ -35,7 +35,7 @@ forecast** — no gate decision, no allocation, no backtest.
 
 All in `config/params.yaml`; nothing hardcoded.
 
-- **Universe**: 20 fixed cross-sector US large-caps, 10+ year history. Fixed universe →
+- **Universe**: 20 fixed cross-sector US large-caps, 2013–2018 history. Fixed universe →
   **survivorship bias is documented, not hidden**.
 - **Symbolization**: per-stock **20/40/60/80** training-window quantiles → 5 symbols.
   Per-stock normalisation strips each stock's own volatility, so strings encode *when*

@@ -32,22 +32,11 @@ portfolio construction and no backtest.
 
 ## Datasets Used
 
-- **Primary** — 20 fixed cross-sector US large-caps, daily adjusted close from 2013 onward,
-  downloaded once and cached locally.
+- **Primary** — daily adjusted close downloaded with **yfinance** from **2013 to 2018**
+  (one request, cached locally), covering 20 stocks: AAPL, MSFT, INTC, CSCO, JPM, VZ, T,
+  XOM, CVX, CAT, JNJ, PFE, MRK, PG, KO, WMT, DIS, HD, MCD, NKE.
 - **Offline fixture** — a committed 10-stock sample covering five years, used by the tests
   and by the offline demo so the project runs without network access.
-
-## Method and Implementation
-
-The implementation is pure Python 3.11 with NumPy, pandas, SciPy, scikit-learn and
-statsmodels; the banded alignment dynamic program is compiled with numba. Every parameter
-lives in `config/params.yaml`; nothing is hardcoded. Each stage uses only data up to the
-point being processed, so there is no look-ahead.
-
-The distance between two symbol strings is the alignment score normalised by the two
-self-scores, `1 - score / sqrt(self_a * self_b)`. It is treated as a similarity measure,
-not as a mathematical metric: the code asserts symmetry and non-negativity, which is all
-average linkage requires.
 
 ## Expected Outcome
 

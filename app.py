@@ -6,7 +6,7 @@ each, then offers the results for download.
 
 Run:
 
-    uv run --group ui streamlit run app.py
+    uv run streamlit run app.py
 """
 
 from __future__ import annotations

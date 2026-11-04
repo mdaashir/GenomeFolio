@@ -6,10 +6,10 @@ universe:
   # Fixed cross-sector US large-cap universe (fixed -> survivorship bias documented, not hidden)
   tickers: [AAPL, MSFT, INTC, CSCO, JPM, VZ, T, XOM, CVX, CAT, JNJ, PFE, MRK, PG, KO, WMT, DIS, HD, MCD, NKE]
   start: "2013-01-01"
-  end: "2025-01-01"
+  end: "2019-01-01"      # through 2018 (yfinance end is exclusive)
   cache_dir: "data/cache"
   fixture_path: "data/sample/prices.csv"
-  min_history_years: 10
+  min_history_years: 6
 
 split:
   # Chronological split, available for holding out a forecasting-evaluation period.

@@ -14,6 +14,7 @@ dependencies = [
     "click>=8.1",
     "numba>=0.59",
     "yfinance>=0.2.40",
+    "streamlit>=1.66.1",
 ]
 
 [project.scripts]
@@ -21,9 +22,6 @@ genomefolio = "src.cli:cli"
 
 [dependency-groups]
 dev = ["pytest>=8.0"]
-ui = [
-    "streamlit>=1.66.1",
-]
 
 [build-system]
 requires = ["hatchling"]

@@ -38,8 +38,7 @@ matrix), **pairwise distance matrix** after the score→distance conversion, clu
 (sizes, silhouette curve, dendrogram), forecast paths and the band-stability check.
 
 ```
-uv sync --group ui
-uv run --group ui streamlit run app.py
+uv run streamlit run app.py
 ```
 
 ## Tests
